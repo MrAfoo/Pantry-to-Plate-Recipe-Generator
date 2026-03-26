@@ -119,6 +119,33 @@ pantry-to-plate/
 | Variable | Required | Description |
 |---|---|---|
 | `GROQ_API_KEY` | ✅ Yes | Your Groq API key from [console.groq.com](https://console.groq.com) |
+| `UPSTASH_REDIS_REST_URL` | ⚡ Recommended | Upstash Redis REST URL from [console.upstash.com](https://console.upstash.com) |
+| `UPSTASH_REDIS_REST_TOKEN` | ⚡ Recommended | Upstash Redis REST token |
+
+> **Note:** If Upstash vars are not set, recipe ratings fall back to an in-memory store (resets on server restart). For persistent ratings across deployments, set up a free Upstash Redis database.
+
+---
+
+## 🗄️ Setting Up Upstash Redis (Free)
+
+1. Go to **[console.upstash.com](https://console.upstash.com)** and sign up free
+2. Click **"Create Database"**
+3. Choose a name (e.g. `pantry-to-plate`), pick the region closest to your users
+4. Select **"Serverless"** type → **Create**
+5. Copy the **REST URL** and **REST Token** from the database dashboard
+6. Add to your `.env.local`:
+   ```env
+   UPSTASH_REDIS_REST_URL=https://your-db.upstash.io
+   UPSTASH_REDIS_REST_TOKEN=AXxx...
+   ```
+7. On Vercel: add both vars in **Settings → Environment Variables**
+
+### How ratings are stored in Redis
+Each recipe gets a Redis hash key based on a SHA-256 of its title:
+```
+ptp:rating:<16-char-hash>  →  { good: "12", bad: "3" }
+```
+Votes are incremented atomically with `HINCRBY` — safe for concurrent requests. Keys expire after 1 year automatically.
 
 ---
 
