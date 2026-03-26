@@ -1,0 +1,214 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply antialiased bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300;
+  }
+}
+
+@layer components {
+  /* Glass card — light + dark */
+  .glass-card {
+    @apply bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm
+           border border-white/60 dark:border-gray-700/60 shadow-xl;
+  }
+
+  /* Gradient text */
+  .gradient-text {
+    @apply bg-gradient-to-r from-brand-600 via-orange-500 to-amber-500 bg-clip-text text-transparent;
+  }
+
+  /* Step badge */
+  .step-badge {
+    @apply flex-shrink-0 w-7 h-7 rounded-full bg-brand-100 dark:bg-brand-900
+           text-brand-700 dark:text-brand-300
+           flex items-center justify-center text-xs font-bold;
+  }
+
+  /* Surface — generic card/panel background */
+  .surface {
+    @apply bg-white dark:bg-gray-900 border border-gray-100 dark:border-gray-700/60;
+  }
+
+  /* Input field */
+  .input-field {
+    @apply bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600
+           text-gray-900 dark:text-gray-100
+           placeholder-gray-400 dark:placeholder-gray-500
+           rounded-lg px-3 py-2 text-sm
+           focus:outline-none focus:ring-2 focus:ring-brand-400 dark:focus:ring-brand-500
+           transition-colors duration-200;
+  }
+}
+
+@layer utilities {
+  .animation-delay-100 { animation-delay: 100ms; }
+  .animation-delay-200 { animation-delay: 200ms; }
+  .animation-delay-300 { animation-delay: 300ms; }
+}
+
+/* ============================================================
+   Print styles — applied when printing the /recipe/[id] page
+   ============================================================ */
+@media print {
+  /* Hide interactive / nav elements */
+  nav,
+  footer,
+  .no-print,
+  button {
+    display: none !important;
+  }
+
+  /* Reset page background and text */
+  body {
+    background: #ffffff !important;
+    color: #111111 !important;
+    font-size: 12pt;
+    line-height: 1.6;
+  }
+
+  /* Full-width content, no max-width */
+  main {
+    max-width: 100% !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Branded header printed at top */
+  .print-header {
+    display: flex !important;
+    align-items: center;
+    justify-content: space-between;
+    border-bottom: 3px solid #f97316;
+    padding-bottom: 12px;
+    margin-bottom: 20px;
+  }
+
+  .print-header-logo {
+    font-size: 18pt;
+    font-weight: 800;
+    color: #f97316;
+  }
+
+  .print-header-date {
+    font-size: 10pt;
+    color: #9ca3af;
+  }
+
+  /* Recipe title */
+  h1 {
+    font-size: 26pt !important;
+    color: #111111 !important;
+    margin-bottom: 8pt !important;
+    page-break-after: avoid;
+  }
+
+  /* Section headings */
+  h2 {
+    font-size: 10pt !important;
+    color: #f97316 !important;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 700;
+    margin-top: 18pt !important;
+    margin-bottom: 8pt !important;
+    page-break-after: avoid;
+  }
+
+  /* Nutrition strip */
+  .print-nutrition {
+    display: grid !important;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 8pt;
+    background: #fff7ed !important;
+    border: 1pt solid #fdba74 !important;
+    border-radius: 8pt;
+    padding: 10pt;
+    margin-bottom: 16pt;
+  }
+
+  .print-nutrition-item {
+    text-align: center;
+  }
+
+  .print-nutrition-value {
+    font-size: 11pt;
+    font-weight: 700;
+    color: #111;
+  }
+
+  .print-nutrition-label {
+    font-size: 8pt;
+    color: #9ca3af;
+  }
+
+  /* Ingredient list */
+  .print-ingredient {
+    display: flex;
+    align-items: center;
+    gap: 8pt;
+    padding: 4pt 0;
+    border-bottom: 0.5pt solid #f3f4f6;
+    font-size: 11pt;
+  }
+
+  .print-ingredient-dot {
+    width: 8pt;
+    height: 8pt;
+    border-radius: 50%;
+    background: #f97316;
+    flex-shrink: 0;
+  }
+
+  /* Steps */
+  .print-step {
+    display: flex;
+    gap: 10pt;
+    margin-bottom: 10pt;
+    page-break-inside: avoid;
+  }
+
+  .print-step-num {
+    width: 20pt;
+    height: 20pt;
+    border-radius: 50%;
+    background: #fff7ed;
+    border: 1pt solid #fdba74;
+    color: #f97316;
+    font-weight: 700;
+    font-size: 10pt;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  /* Chef's tip */
+  .print-tip {
+    background: #fffbeb !important;
+    border: 1pt solid #fcd34d !important;
+    border-radius: 8pt;
+    padding: 10pt;
+    margin-top: 14pt;
+    font-size: 10pt;
+    color: #92400e;
+    page-break-inside: avoid;
+  }
+
+  /* Page break helpers */
+  .page-break-before { page-break-before: always; }
+  .page-break-avoid  { page-break-inside: avoid; }
+
+  /* Force colors to print */
+  * {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
