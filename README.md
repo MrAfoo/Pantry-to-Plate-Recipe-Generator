@@ -77,17 +77,20 @@ pantry-to-plate/
 │   ├── api/
 │   │   ├── generate/route.ts           # POST — generate recipes via Groq Vision
 │   │   ├── detect-ingredients/route.ts # POST — detect ingredients from images
-│   │   ├── rate/route.ts               # GET/POST — recipe ratings
+│   │   ├── rate/route.ts               # GET/POST — recipe ratings (Upstash Redis)
 │   │   └── og/route.tsx                # GET — Open Graph image generator (SVG)
 │   ├── recipe/
+│   │   ├── share/
+│   │   │   ├── page.tsx                # Shareable recipe page (opened from share links)
+│   │   │   └── layout.tsx              # Dynamic OG metadata for share page
 │   │   └── [id]/
-│   │       ├── page.tsx                # Shareable recipe page
+│   │       ├── page.tsx                # Legacy shareable recipe page
 │   │       └── layout.tsx              # Dynamic OG metadata
 │   └── components/
-│       ├── ThemeProvider.tsx           # Dark/light mode context
+│       ├── ThemeProvider.tsx           # Dark/light mode context + localStorage
 │       ├── ThemeToggle.tsx             # Sun/moon icon toggle button
-│       ├── RecipeCard.tsx              # Recipe display card with PDF + share
-│       ├── RecipeRating.tsx            # 👍/👎 rating widget
+│       ├── RecipeCard.tsx              # Recipe card with rating, PDF export & share
+│       ├── RecipeRating.tsx            # 👍/👎 rating widget with progress bars
 │       ├── IngredientPreview.tsx       # Ingredient scan/edit panel
 │       └── HistorySidebar.tsx          # localStorage history sidebar
 ├── .env.local.template                 # Environment variable template
@@ -102,15 +105,17 @@ pantry-to-plate/
 
 ## 🛠️ Tech Stack
 
-| Technology | Purpose |
-|---|---|
-| **Next.js 15** (App Router) | Full-stack React framework |
-| **TypeScript** | Type safety throughout |
-| **Tailwind CSS** | Utility-first styling + dark mode |
-| **Groq SDK** | Blazing-fast AI inference |
-| **Llama 4 Scout** (Vision) | Ingredient detection + recipe generation |
-| **react-dropzone** | Drag & drop file upload |
-| **jsPDF** | Client-side PDF generation |
+| Technology | Version | Purpose |
+|---|---|---|
+| **Next.js** (App Router) | 15.1.0 | Full-stack React framework — handles routing, API routes, SSR metadata |
+| **React** | 19.0.0 | UI component library |
+| **TypeScript** | 5.7 | Type safety — shared types across frontend and API routes |
+| **Tailwind CSS** | 3.4 | Utility-first styling with built-in dark mode (`darkMode: "class"`) |
+| **Groq SDK** | 0.7.0 | Client for Groq's ultra-fast AI inference API |
+| **Llama 4 Scout** (Vision) | — | Multimodal AI model — sees images, detects ingredients, generates recipes |
+| **react-dropzone** | 14.3.5 | Drag & drop file upload with file type/multiple file support |
+| **jsPDF** | 2.5.1 | Client-side PDF generation — no server needed |
+| **@upstash/redis** | 1.34.3 | Serverless Redis client — persistent recipe ratings via REST API |
 
 ---
 
@@ -173,11 +178,13 @@ npm run lint     # Run ESLint
 
 ## ⚠️ Important Notes
 
-- **Image size limit:** Each uploaded image must be under **5 MB**
-- **Max images:** Up to **10 photos** per generation
-- **Scanned/image PDFs:** Text extraction only works on text-layer PDFs
-- **Ratings storage:** Recipe ratings use in-memory storage (resets on server restart). For production, integrate a persistent database (Upstash Redis, Supabase, etc.)
-- **Share links:** Recipe data is encoded in the URL hash — no server storage needed
+- **Image size limit:** Each uploaded image must be under **5 MB** — oversized files are rejected with a clear error message
+- **Max images:** Up to **10 photos** per generation — AI combines ingredients from all photos
+- **Ratings storage:** Uses **Upstash Redis** for persistence. Falls back to in-memory if env vars not set
+- **Share links:** Recipe data is Base64-encoded in the URL hash — no server storage needed, works instantly
+- **Share page:** Share links open `/recipe/share?title=...#recipe=...` — includes OG metadata for rich social previews
+- **Dark mode:** Respects system preference on first visit, saved to `localStorage` for returning users
+- **PDF export:** Generated entirely in the browser via jsPDF — no server round-trip needed
 
 ---
 
