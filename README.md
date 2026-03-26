@@ -24,6 +24,10 @@
 | 🕐 **History sidebar** | All past generations saved in localStorage |
 | 🌙 **Dark mode** | Full dark/light theme with system preference detection |
 | 🖨️ **Print styles** | Print-optimised layout for the recipe share page |
+| 🥦 **Dietary filters** | Vegetarian, Vegan, Gluten-Free, Dairy-Free, Keto, Halal, Low-Calorie |
+| 🔄 **Ingredient substitutions** | Tap any ingredient → get 3 AI-powered substitutes instantly |
+| 📱 **PWA support** | Install as a native app on mobile/desktop — orange branded icons |
+| 📊 **Vercel Analytics** | Page view and visitor tracking built-in |
 
 ---
 
@@ -72,27 +76,35 @@ Open **[http://localhost:3000](http://localhost:3000)** 🎉
 pantry-to-plate/
 ├── app/
 │   ├── page.tsx                        # Main upload + recipe generation page
-│   ├── layout.tsx                      # Root layout with ThemeProvider
+│   ├── layout.tsx                      # Root layout with ThemeProvider + PWA meta
 │   ├── globals.css                     # Tailwind + print styles
 │   ├── api/
 │   │   ├── generate/route.ts           # POST — generate recipes via Groq Vision
 │   │   ├── detect-ingredients/route.ts # POST — detect ingredients from images
 │   │   ├── rate/route.ts               # GET/POST — recipe ratings (Upstash Redis)
+│   │   ├── substitute/route.ts         # POST — ingredient substitutions via Groq
 │   │   └── og/route.tsx                # GET — Open Graph image generator (SVG)
 │   ├── recipe/
 │   │   ├── share/
-│   │   │   ├── page.tsx                # Shareable recipe page (opened from share links)
-│   │   │   └── layout.tsx              # Dynamic OG metadata for share page
+│   │   │   ├── page.tsx                # Shareable recipe page (dynamic OG metadata)
+│   │   │   └── layout.tsx              # Static layout wrapper
 │   │   └── [id]/
 │   │       ├── page.tsx                # Legacy shareable recipe page
-│   │       └── layout.tsx              # Dynamic OG metadata
+│   │       └── layout.tsx              # Static layout wrapper
 │   └── components/
 │       ├── ThemeProvider.tsx           # Dark/light mode context + localStorage
 │       ├── ThemeToggle.tsx             # Sun/moon icon toggle button
-│       ├── RecipeCard.tsx              # Recipe card with rating, PDF export & share
+│       ├── RecipeCard.tsx              # Recipe card with substitutions, rating, PDF & share
 │       ├── RecipeRating.tsx            # 👍/👎 rating widget with progress bars
+│       ├── RecipeShareClient.tsx       # Client-side share page component
 │       ├── IngredientPreview.tsx       # Ingredient scan/edit panel
+│       ├── DietaryFilters.tsx          # 7 dietary preference toggle filters
 │       └── HistorySidebar.tsx          # localStorage history sidebar
+├── public/
+│   ├── manifest.json                   # PWA manifest (name, icons, theme color)
+│   └── icons/
+│       ├── icon-192.svg                # PWA icon 192×192
+│       └── icon-512.svg                # PWA icon 512×512
 ├── .env.local.template                 # Environment variable template
 ├── .gitignore                          # Git ignore rules
 ├── package.json
@@ -116,6 +128,7 @@ pantry-to-plate/
 | **react-dropzone** | 14.3.5 | Drag & drop file upload with file type/multiple file support |
 | **jsPDF** | 2.5.1 | Client-side PDF generation — no server needed |
 | **@upstash/redis** | 1.34.3 | Serverless Redis client — persistent recipe ratings via REST API |
+| **@vercel/analytics** | 1.5.0 | Page view tracking via Vercel Analytics dashboard |
 
 ---
 
