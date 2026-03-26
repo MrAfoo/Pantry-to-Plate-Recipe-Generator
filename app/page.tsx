@@ -18,7 +18,7 @@ import DietaryFilters, { type DietaryPreference } from "./components/DietaryFilt
 // ---------------------------------------------------------------------------
 const MAX_FILE_SIZE_MB = 5;
 const MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024;
-const MAX_IMAGES = 10;
+const MAX_IMAGES = 5; // Llama 4 Scout supports up to 5 images per request
 
 // ---------------------------------------------------------------------------
 // Icons
@@ -380,7 +380,9 @@ export default function Home() {
         const img = new Image();
         img.onerror = reject;
         img.onload = () => {
-          const MAX_DIM = 1280;
+          // 1920px preserves enough detail for AI ingredient recognition
+          // JPEG 0.92 quality keeps text/labels on packaging readable
+          const MAX_DIM = 1920;
           let { width, height } = img;
           if (width > MAX_DIM || height > MAX_DIM) {
             if (width > height) {
@@ -397,7 +399,7 @@ export default function Home() {
           const ctx = canvas.getContext("2d");
           if (!ctx) { reject(new Error("Canvas not supported")); return; }
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", 0.82));
+          resolve(canvas.toDataURL("image/jpeg", 0.92));
         };
         img.src = reader.result as string;
       };
