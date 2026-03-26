@@ -1,11 +1,10 @@
 import type { Metadata } from "next";
 
-export async function generateMetadata({
-  searchParams,
-}: {
-  params: Record<string, string>;
-  searchParams: Record<string, string | string[] | undefined>;
+export async function generateMetadata(props: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }): Promise<Metadata> {
+  const searchParams = await props.searchParams;
+
   const raw = (key: string) => {
     const v = searchParams[key];
     return typeof v === "string" ? decodeURIComponent(v) : undefined;
@@ -30,8 +29,8 @@ export async function generateMetadata({
 
   const ogImageUrl =
     `/api/og?title=${encodeURIComponent(title)}&tag=${tag}` +
-    (calories  ? `&calories=${encodeURIComponent(calories)}`   : "") +
-    (prepTime  ? `&prepTime=${encodeURIComponent(prepTime)}`   : "");
+    (calories ? `&calories=${encodeURIComponent(calories)}` : "") +
+    (prepTime ? `&prepTime=${encodeURIComponent(prepTime)}` : "");
 
   return {
     title: `${title} — Pantry to Plate`,
