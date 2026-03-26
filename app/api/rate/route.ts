@@ -30,10 +30,14 @@ const memoryStore = new Map<string, RatingEntry>();
 // Helpers
 // ---------------------------------------------------------------------------
 
-/** Stable Redis key from recipe title */
+/** Stable Redis key from recipe title — human readable slug + short hash */
 function ratingKey(title: string): string {
-  const hash = createHash("sha256").update(title.trim().toLowerCase()).digest("hex").slice(0, 16);
-  return `ptp:rating:${hash}`;
+  const slug = title.trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "")
+    .slice(0, 40);
+  const hash = createHash("sha256").update(title.trim().toLowerCase()).digest("hex").slice(0, 8);
+  return `ptp:rating:${slug}-${hash}`;
 }
 
 /** Read ratings — Redis first, fallback to memory */
