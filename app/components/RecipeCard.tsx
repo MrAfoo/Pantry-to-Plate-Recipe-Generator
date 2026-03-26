@@ -3,6 +3,106 @@
 import { useState } from "react";
 import type { Recipe } from "../api/generate/route";
 import RecipeRating from "./RecipeRating";
+import type { Substitute } from "../api/substitute/route";
+
+// ---------------------------------------------------------------------------
+// Ingredient Substitution Popover
+// ---------------------------------------------------------------------------
+function SubstitutePopover({
+  ingredient,
+  recipeTitle,
+  onClose,
+}: {
+  ingredient: string;
+  recipeTitle: string;
+  onClose: () => void;
+}) {
+  const [subs, setSubs]       = useState<Substitute[] | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError]     = useState<string | null>(null);
+
+  // Fetch on mount
+  useState(() => {
+    fetch("/api/substitute", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ ingredient, recipeTitle }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (d.error) throw new Error(d.error);
+        setSubs(d.substitutes);
+      })
+      .catch((e) => setError(e.message))
+      .finally(() => setLoading(false));
+  });
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" />
+      <div
+        className="relative bg-white dark:bg-gray-900 rounded-2xl shadow-2xl border border-gray-100 dark:border-gray-700 w-full max-w-sm p-5 animate-slide-up"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-start justify-between mb-4">
+          <div>
+            <h3 className="font-bold text-gray-900 dark:text-gray-100 text-sm">
+              Substitutes for
+            </h3>
+            <p className="text-brand-600 dark:text-brand-400 font-bold text-base mt-0.5">
+              {ingredient}
+            </p>
+          </div>
+          <button
+            onClick={onClose}
+            className="w-7 h-7 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center text-gray-500 dark:text-gray-400 hover:text-gray-800 dark:hover:text-white transition text-xs"
+          >
+            ✕
+          </button>
+        </div>
+
+        {/* Loading */}
+        {loading && (
+          <div className="flex flex-col items-center gap-3 py-6">
+            <svg className="animate-spin w-6 h-6 text-brand-500" fill="none" viewBox="0 0 24 24">
+              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+            </svg>
+            <p className="text-xs text-gray-400">Finding substitutes…</p>
+          </div>
+        )}
+
+        {/* Error */}
+        {error && (
+          <p className="text-xs text-rose-500 dark:text-rose-400 text-center py-4">{error}</p>
+        )}
+
+        {/* Substitutes */}
+        {subs && (
+          <div className="space-y-3">
+            {subs.map((s, i) => (
+              <div key={i} className="bg-gray-50 dark:bg-gray-800 rounded-xl px-4 py-3 border border-gray-100 dark:border-gray-700">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="font-bold text-sm text-gray-900 dark:text-gray-100">
+                    {i + 1}. {s.name}
+                  </span>
+                  <span className="text-[10px] font-semibold bg-brand-100 dark:bg-brand-900/40 text-brand-700 dark:text-brand-300 px-2 py-0.5 rounded-full">
+                    {s.ratio}
+                  </span>
+                </div>
+                <p className="text-xs text-gray-500 dark:text-gray-400">{s.reason}</p>
+              </div>
+            ))}
+            <p className="text-[10px] text-gray-400 dark:text-gray-500 text-center pt-1">
+              Tap outside to close
+            </p>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Icons
@@ -212,6 +312,7 @@ export default function RecipeCard({ recipe, index }: { recipe: Recipe; index: n
   const [expanded, setExpanded] = useState(false);
   const [copied, setCopied] = useState(false);
   const [exporting, setExporting] = useState(false);
+  const [substituteFor, setSubstituteFor] = useState<string | null>(null);
   const c = THEMES[index % THEMES.length];
   const tagCfg = TAG_CONFIG[recipe.tag] ?? TAG_CONFIG.common;
 
@@ -256,20 +357,38 @@ export default function RecipeCard({ recipe, index }: { recipe: Recipe; index: n
 
         {/* Ingredients */}
         <div>
-          <h4 className={`text-[10px] font-bold uppercase tracking-widest ${c.accent} mb-2`}>
-            Ingredients
-          </h4>
+          <div className="flex items-center justify-between mb-2">
+            <h4 className={`text-[10px] font-bold uppercase tracking-widest ${c.accent}`}>
+              Ingredients
+            </h4>
+            <span className="text-[10px] text-gray-400 dark:text-gray-500">Tap any ingredient to substitute</span>
+          </div>
           <ul className="flex flex-wrap gap-1.5">
             {recipe.ingredients.map((ing, i) => (
-              <li key={i} className="flex items-center gap-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm">
+              <li
+                key={i}
+                onClick={() => setSubstituteFor(ing)}
+                className="flex items-center gap-1.5 bg-white dark:bg-gray-700 border border-gray-200 dark:border-gray-600 text-gray-700 dark:text-gray-200 text-xs font-medium px-2.5 py-1 rounded-full shadow-sm cursor-pointer hover:border-brand-300 dark:hover:border-brand-500 hover:bg-brand-50 dark:hover:bg-brand-950/20 hover:scale-[1.03] transition-all duration-150"
+                title={`Find substitutes for ${ing}`}
+              >
                 <span className={`w-3.5 h-3.5 rounded-full ${c.badge} flex items-center justify-center flex-shrink-0 text-white`}>
                   <CheckIcon />
                 </span>
                 {ing}
+                <span className="text-gray-300 dark:text-gray-500 text-[10px]">↔</span>
               </li>
             ))}
           </ul>
         </div>
+
+        {/* Substitution popover */}
+        {substituteFor && (
+          <SubstitutePopover
+            ingredient={substituteFor}
+            recipeTitle={recipe.title}
+            onClose={() => setSubstituteFor(null)}
+          />
+        )}
 
         {/* Steps */}
         <div>

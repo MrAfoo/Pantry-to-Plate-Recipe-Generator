@@ -13,6 +13,13 @@ export const metadata: Metadata = {
     description: "Drop a fridge photo → get 3 instant recipes with AI.",
     type: "website",
   },
+  manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "Pantry to Plate",
+  },
+  formatDetection: { telephone: false },
 };
 
 export default function RootLayout({
@@ -23,6 +30,8 @@ export default function RootLayout({
   return (
     <html lang="en" suppressHydrationWarning>
       <body className="min-h-screen font-sans transition-colors duration-300">
+        {/* PWA theme color */}
+        <meta name="theme-color" content="#f97316" />
         <ThemeProvider>
           {children}
         </ThemeProvider>

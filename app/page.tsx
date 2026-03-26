@@ -11,6 +11,7 @@ import HistorySidebar, {
 } from "./components/HistorySidebar";
 import IngredientPreview from "./components/IngredientPreview";
 import ThemeToggle from "./components/ThemeToggle";
+import DietaryFilters, { type DietaryPreference } from "./components/DietaryFilters";
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -288,6 +289,7 @@ export default function Home() {
   const [historyCount, setHistoryCount] = useState(0);
   const [showIngredientPreview, setShowIngredientPreview] = useState(false);
   const [unavailableSuggestions, setUnavailableSuggestions] = useState<string[]>([]);
+  const [dietaryPreferences, setDietaryPreferences] = useState<DietaryPreference[]>([]);
   const resultsRef = useRef<HTMLDivElement>(null);
 
   // Load history count on mount + whenever localStorage changes (e.g. delete from sidebar)
@@ -393,9 +395,11 @@ export default function Home() {
 
     try {
       // If coming from ingredient preview, pass confirmed list as extra context
-      const body = confirmedIngredients
-        ? { imagesBase64: images.map((img) => img.base64), confirmedIngredients }
-        : { imagesBase64: images.map((img) => img.base64) };
+      const body = {
+        imagesBase64: images.map((img) => img.base64),
+        ...(confirmedIngredients ? { confirmedIngredients } : {}),
+        ...(dietaryPreferences.length > 0 ? { dietaryPreferences } : {}),
+      };
 
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -544,6 +548,15 @@ export default function Home() {
               isLoading={isLoading}
               sizeErrors={sizeErrors}
             />
+
+            {/* Dietary filters */}
+            <div className="mt-4 pt-4 border-t border-gray-100 dark:border-gray-700">
+              <DietaryFilters
+                selected={dietaryPreferences}
+                onChange={setDietaryPreferences}
+                disabled={isLoading}
+              />
+            </div>
 
             {/* Action buttons */}
             <div className="mt-5 flex flex-col sm:flex-row gap-3">

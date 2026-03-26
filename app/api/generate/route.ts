@@ -32,10 +32,11 @@ export interface GenerateResponse {
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { imageBase64, imagesBase64, confirmedIngredients } = body as {
+    const { imageBase64, imagesBase64, confirmedIngredients, dietaryPreferences } = body as {
       imageBase64?: string;
       imagesBase64?: string[];
       confirmedIngredients?: string[];
+      dietaryPreferences?: string[];
     };
 
     const images: string[] = imagesBase64?.length
@@ -75,11 +76,16 @@ export async function POST(req: NextRequest) {
       ? `\nThe user has confirmed these specific ingredients are available: ${confirmedIngredients.join(", ")}.`
       : "";
 
+    // Build dietary preferences context
+    const dietaryContext = dietaryPreferences?.length
+      ? `\nCRITICAL DIETARY REQUIREMENTS: The user follows these dietary preferences: ${dietaryPreferences.join(", ")}. ALL 3 recipes MUST strictly comply with these requirements. Do NOT include any ingredients that violate these preferences.`
+      : "";
+
     const imageWord = images.length > 1 ? "images" : "image";
 
     // ---- System prompt ----------------------------------------------------
     const SYSTEM_PROMPT = `You are a master chef and nutritionist with encyclopedic knowledge of world cuisines.
-Look carefully at ALL the ingredients visible across all the ${imageWord} provided.${ingredientContext}
+Look carefully at ALL the ingredients visible across all the ${imageWord} provided.${ingredientContext}${dietaryContext}
 
 YOUR TASK: Return exactly 3 recipes following this STRICT TIER SYSTEM:
 
