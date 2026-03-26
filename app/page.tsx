@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useDropzone } from "react-dropzone";
-import type { Recipe } from "./api/generate/route";
+import type { Recipe, GrocerySuggestion } from "./api/generate/route";
 import RecipeCard from "./components/RecipeCard";
 import HistorySidebar, {
   addHistoryEntry,
@@ -239,6 +239,69 @@ function DropzoneArea({
 }
 
 // ---------------------------------------------------------------------------
+// Grocery suggestion card (with copy-to-clipboard)
+// ---------------------------------------------------------------------------
+function GroceryCard({ suggestion, index }: { suggestion: GrocerySuggestion; index: number }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    const text = `Shopping list for ${suggestion.dish}:\n${suggestion.buy.map((item, i) => `${i + 1}. ${item}`).join("\n")}`;
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch {
+      prompt("Copy this list:", text);
+    }
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2500);
+  };
+
+  return (
+    <div
+      className="glass-card rounded-2xl border border-green-100 dark:border-green-900/40 overflow-hidden animate-slide-up flex flex-col"
+      style={{ animationDelay: `${index * 100}ms`, animationFillMode: "both" }}
+    >
+      {/* Header */}
+      <div className="bg-green-500 dark:bg-green-700 px-4 py-3 flex items-center gap-2">
+        <span className="text-lg">🍽️</span>
+        <h4 className="font-bold text-white text-sm leading-snug flex-1">{suggestion.dish}</h4>
+      </div>
+
+      <div className="px-4 py-4 flex flex-col flex-1">
+        {/* Reason */}
+        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">{suggestion.reason}</p>
+
+        {/* Buy list */}
+        <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">
+          🛒 Add to cart
+        </p>
+        <ul className="space-y-1.5 flex-1">
+          {suggestion.buy.map((item, j) => (
+            <li key={j} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 font-medium">
+              <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+                {j + 1}
+              </span>
+              {item}
+            </li>
+          ))}
+        </ul>
+
+        {/* Copy button */}
+        <button
+          onClick={handleCopy}
+          className={`mt-4 w-full flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-xl border transition-all duration-200
+            ${copied
+              ? "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
+              : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-green-300 dark:hover:border-green-600 hover:text-green-600 dark:hover:text-green-400 hover:scale-[1.02]"
+            }`}
+        >
+          {copied ? "✓ Copied!" : "📋 Copy list"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Loading skeleton
 // ---------------------------------------------------------------------------
 function RecipeSkeleton({ index }: { index: number }) {
@@ -289,6 +352,7 @@ export default function Home() {
   const [historyCount, setHistoryCount] = useState(0);
   const [showIngredientPreview, setShowIngredientPreview] = useState(false);
   const [unavailableSuggestions, setUnavailableSuggestions] = useState<string[]>([]);
+  const [grocerySuggestions, setGrocerySuggestions] = useState<GrocerySuggestion[]>([]);
   const [dietaryPreferences, setDietaryPreferences] = useState<DietaryPreference[]>([]);
   const resultsRef = useRef<HTMLDivElement>(null);
 
@@ -328,7 +392,7 @@ export default function Home() {
 
       if (overflow > 0) {
         errors.push(
-          `Only ${slotsAvailable} more image${slotsAvailable !== 1 ? "s" : ""} can be added (max ${MAX_IMAGES} total). ${overflow} file${overflow > 1 ? "s were" : " was"} ignored.`
+          `Only ${slotsAvailable} image${slotsAvailable !== 1 ? "s" : ""} can be added (max ${MAX_IMAGES} total). ${overflow} file${overflow > 1 ? "s were" : " was"} ignored.`
         );
       }
 
@@ -413,6 +477,10 @@ export default function Home() {
       const generatedRecipes: Recipe[] = data.recipes;
       setRecipes(generatedRecipes);
       setUnavailableSuggestions(data.unavailableSuggestions ?? []);
+      setGrocerySuggestions(data.grocerySuggestions ?? []);
+      if (data.insufficientIngredients) {
+        setError("⚠️ Not enough ingredients detected to make proper recipes. Try uploading clearer photos, or use 'Scan Ingredients' to add items manually.");
+      }
 
       // Save to history
       addHistoryEntry({
@@ -461,6 +529,7 @@ export default function Home() {
     setSizeErrors([]);
     setShowIngredientPreview(false);
     setUnavailableSuggestions([]);
+    setGrocerySuggestions([]);
   };
 
   const canGenerate = images.length > 0 && !isLoading;
@@ -524,7 +593,7 @@ export default function Home() {
             <span className="gradient-text">fridge?</span>
           </h1>
           <p className="mt-4 text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-            Drop <strong>1 to {MAX_IMAGES} photos</strong> of your fridge or pantry. Our AI chef
+            Drop <strong>1 to {MAX_IMAGES} photos</strong> of your ingredients, fridge contents, or pantry. Our AI chef
             will craft <strong>3 delicious recipes</strong> from everything it sees.
           </p>
         </div>
@@ -689,6 +758,25 @@ export default function Home() {
             </div>
 
 
+            {/* Grocery suggestions — shown when ingredients are too few */}
+            {grocerySuggestions.length > 0 && (
+              <div className="mt-10 animate-fade-in">
+                <div className="text-center mb-6">
+                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
+                    🛒 Short on ingredients? Buy a little, cook a lot!
+                  </h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                    Pick up just a few items and unlock a full meal with what you already have.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                  {grocerySuggestions.map((s, i) => (
+                    <GroceryCard key={i} suggestion={s} index={i} />
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* Footer CTA */}
             <div className="mt-12 flex flex-col sm:flex-row items-center justify-center gap-4">
               <button
@@ -712,7 +800,7 @@ export default function Home() {
         {images.length === 0 && !isLoading && !error && !recipes && (
           <div className="mt-4 flex flex-wrap justify-center gap-6 text-center animate-fade-in">
             {[
-              { emoji: "📸", label: `Upload 1–${MAX_IMAGES} fridge photos` },
+              { emoji: "📸", label: `Upload 1–${MAX_IMAGES} photos of ingredients or fridge` },
               { emoji: "🔍", label: "Scan & edit detected ingredients" },
               { emoji: "🍳", label: "Get 3 custom recipes instantly" },
               { emoji: "💾", label: "Save as PDF or share a link" },

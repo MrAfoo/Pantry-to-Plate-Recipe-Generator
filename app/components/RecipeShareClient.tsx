@@ -82,7 +82,7 @@ async function exportToPDF(recipe: Recipe) {
 
   const tagCfg = TAG_CONFIG[recipe.tag] ?? TAG_CONFIG.special;
   doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(120, 120, 120);
-  doc.text(`${tagCfg.emoji}  ${tagCfg.label.toUpperCase()}`, MARGIN, y); y += 6;
+  doc.text(tagCfg.label.toUpperCase(), MARGIN, y); y += 6;
 
   doc.setTextColor(30, 30, 30); doc.setFontSize(22); doc.setFont("helvetica", "bold");
   const titleLines = doc.splitTextToSize(recipe.title, CONTENT_W) as string[];
@@ -93,7 +93,7 @@ async function exportToPDF(recipe: Recipe) {
     doc.setFillColor(255, 247, 237);
     doc.roundedRect(MARGIN, y, CONTENT_W, 12, 2, 2, "F");
     doc.setFontSize(8); doc.setFont("helvetica", "bold"); doc.setTextColor(249, 115, 22);
-    doc.text(`⏱ ${n.prepTime}   🔥 ${n.calories}   💪 ${n.protein} protein   🍞 ${n.carbs} carbs   🥑 ${n.fat} fat`, MARGIN + 3, y + 8);
+    doc.text(`Prep: ${n.prepTime}   Calories: ${n.calories}   Protein: ${n.protein}   Carbs: ${n.carbs}   Fat: ${n.fat}`, MARGIN + 3, y + 8);
     y += 18;
   }
 
@@ -120,7 +120,7 @@ async function exportToPDF(recipe: Recipe) {
 
   if (recipe.tip) {
     y += 4;
-    const tipLines = doc.splitTextToSize(`💡 Chef's Tip: ${recipe.tip}`, CONTENT_W - 8) as string[];
+    const tipLines = doc.splitTextToSize(`Chef's Tip: ${recipe.tip}`, CONTENT_W - 8) as string[];
     doc.setFillColor(255, 251, 235);
     doc.roundedRect(MARGIN, y - 4, CONTENT_W, tipLines.length * 5.5 + 8, 2, 2, "F");
     doc.setFontSize(9); doc.setTextColor(180, 100, 0);

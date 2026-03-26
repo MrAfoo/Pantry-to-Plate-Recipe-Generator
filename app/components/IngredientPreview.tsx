@@ -292,6 +292,32 @@ export default function IngredientPreview({ imagesBase64, onConfirm, onCancel }:
               )}
             </div>
 
+            {/* Low ingredient warning */}
+            {ingredients.length > 0 && ingredients.length < 3 && (
+              <div className="flex items-start gap-2.5 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-3 mb-4 animate-fade-in">
+                <span className="text-base flex-shrink-0">⚠️</span>
+                <div>
+                  <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">Very few ingredients detected</p>
+                  <p className="text-xs text-amber-600 dark:text-amber-500 mt-0.5">
+                    Only <strong>{ingredients.length}</strong> ingredient{ingredients.length !== 1 ? "s" : ""} found — recipes may be very limited. Try uploading a clearer photo, or add ingredients manually below.
+                  </p>
+                </div>
+              </div>
+            )}
+
+            {/* No ingredients warning */}
+            {ingredients.length === 0 && detected && (
+              <div className="flex items-start gap-2.5 bg-rose-50 dark:bg-rose-950/30 border border-rose-200 dark:border-rose-800 rounded-xl px-4 py-3 mb-4 animate-fade-in">
+                <span className="text-base flex-shrink-0">🚫</span>
+                <div>
+                  <p className="text-xs font-semibold text-rose-700 dark:text-rose-400">No ingredients detected</p>
+                  <p className="text-xs text-rose-600 dark:text-rose-500 mt-0.5">
+                    The AI couldn&apos;t find any food items in your photo. Make sure your image shows ingredients clearly, or add them manually below.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {/* Summary */}
             <div className="flex items-center justify-between mb-5 text-xs text-gray-400 dark:text-gray-500">
               <span>

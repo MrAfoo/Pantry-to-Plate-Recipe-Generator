@@ -21,9 +21,16 @@ export interface Recipe {
   tip?: string;           // optional chef's tip
 }
 
+export interface GrocerySuggestion {
+  dish: string;          // e.g. "Spaghetti Bolognese"
+  buy: string[];         // e.g. ["spaghetti", "minced beef", "tomato paste"]
+  reason: string;        // e.g. "You already have onion and garlic — just grab these!"
+}
+
 export interface GenerateResponse {
   recipes: Recipe[];
-  unavailableSuggestions?: string[];  // e.g. ["pizza", "pasta"] if missing key ingredients
+  unavailableSuggestions?: string[];   // e.g. ["pizza", "pasta"] if missing key ingredients
+  grocerySuggestions?: GrocerySuggestion[]; // shown when ingredients are insufficient
 }
 
 // ---------------------------------------------------------------------------
@@ -99,6 +106,14 @@ Look at the ingredients. Think of popular dishes people often want (pizza, burge
 If the ingredients are clearly NOT sufficient to make those dishes, list up to 4 such dish names in "unavailableSuggestions".
 If the ingredients ARE sufficient for those dishes, do NOT include them (they should appear as recipes instead).
 
+ADDITIONAL TASK — grocerySuggestions (ONLY if very few ingredients are visible, i.e. fewer than 4 distinct food items):
+If the user has very few ingredients, suggest 3 minimal grocery lists. Each suggestion should:
+- Pick a popular, satisfying dish the user is close to being able to make
+- List only 2–4 items they need to BUY (not what they already have)
+- Include a short encouraging reason that mentions what they already have
+Format: array of objects with "dish", "buy" (array of strings), and "reason" (one sentence, max 15 words).
+If the user has 4 or more distinct ingredients, set "grocerySuggestions" to an empty array [].
+
 NUTRITION: For each recipe, estimate realistic nutritional info per serving:
 - calories (e.g. "~380 kcal")
 - protein (e.g. "24g")
@@ -127,7 +142,12 @@ Example shape (content is fictional — follow only the structure):
       "tip": "Use medium-low heat for a creamier texture."
     }
   ],
-  "unavailableSuggestions": ["pizza", "sushi"]
+  "unavailableSuggestions": ["pizza", "sushi"],
+  "grocerySuggestions": [
+    { "dish": "Spaghetti Bolognese", "buy": ["spaghetti", "minced beef", "tomato paste"], "reason": "You already have onion and garlic — just grab these 3!" },
+    { "dish": "Vegetable Stir-Fry", "buy": ["soy sauce", "bell peppers", "rice"], "reason": "Your eggs are perfect here — add these for a full meal." },
+    { "dish": "Pancakes", "buy": ["flour", "milk", "sugar"], "reason": "You have eggs and butter — these 3 complete the batter!" }
+  ]
 }`;
 
     // Build image blocks
@@ -200,8 +220,18 @@ Example shape (content is fictional — follow only the structure):
       ? parsed.unavailableSuggestions.slice(0, 6)
       : [];
 
+    // Flag insufficient ingredients: all recipes have 2 or fewer ingredients
+    const insufficientIngredients = normalised.every((r) => r.ingredients.length <= 2);
+
+    // Grocery suggestions (only populated by AI when ingredients are very few)
+    const grocerySuggestions: GrocerySuggestion[] = Array.isArray(parsed.grocerySuggestions)
+      ? parsed.grocerySuggestions
+          .filter((g) => g.dish && Array.isArray(g.buy) && g.buy.length > 0 && g.reason)
+          .slice(0, 3)
+      : [];
+
     return NextResponse.json(
-      { recipes: normalised, unavailableSuggestions },
+      { recipes: normalised, unavailableSuggestions, insufficientIngredients, grocerySuggestions },
       { status: 200 }
     );
   } catch (err: unknown) {
