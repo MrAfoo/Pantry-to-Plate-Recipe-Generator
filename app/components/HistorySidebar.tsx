@@ -59,9 +59,15 @@ export default function HistorySidebar({ isOpen, onClose, onRestore, refreshKey 
     const updated = entries.filter((e) => e.id !== id);
     setEntries(updated);
     saveHistory(updated);
+    // Fire a storage event so the navbar badge updates immediately
+    window.dispatchEvent(new Event("storage"));
   };
 
-  const handleClearAll = () => { setEntries([]); saveHistory([]); };
+  const handleClearAll = () => {
+    setEntries([]);
+    saveHistory([]);
+    window.dispatchEvent(new Event("storage"));
+  };
 
   return (
     <>

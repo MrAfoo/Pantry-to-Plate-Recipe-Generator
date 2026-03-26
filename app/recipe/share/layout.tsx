@@ -1,21 +1,25 @@
 import type { Metadata } from "next";
 
-interface Props {
-  searchParams: Promise<{ title?: string; tag?: string; calories?: string; prepTime?: string }>;
-}
+export async function generateMetadata({
+  searchParams,
+}: {
+  params: Record<string, string>;
+  searchParams: Record<string, string | string[] | undefined>;
+}): Promise<Metadata> {
+  const raw = (key: string) => {
+    const v = searchParams[key];
+    return typeof v === "string" ? decodeURIComponent(v) : undefined;
+  };
 
-export async function generateMetadata({ searchParams }: Props): Promise<Metadata> {
-  const sp = await searchParams;
+  const title    = raw("title")    ?? "AI-Generated Recipe";
+  const tag      = raw("tag")      ?? "special";
+  const calories = raw("calories") ?? null;
+  const prepTime = raw("prepTime") ?? null;
 
-  const title = sp.title ? decodeURIComponent(sp.title) : "AI-Generated Recipe";
-  const tag = sp.tag ?? "special";
   const tagLabel =
     tag === "common" ? "🥄 Everyday Recipe" :
     tag === "good"   ? "⭐ Impressive Recipe" :
                        "👨‍🍳 Chef's Special";
-
-  const calories = sp.calories ? decodeURIComponent(sp.calories) : null;
-  const prepTime = sp.prepTime ? decodeURIComponent(sp.prepTime) : null;
 
   const description = [
     tagLabel,
@@ -24,7 +28,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
     "Made with ingredients from your fridge · Pantry to Plate AI Chef",
   ].filter(Boolean).join(" · ");
 
-  const ogImageUrl = `/api/og?title=${encodeURIComponent(title)}&tag=${tag}${calories ? `&calories=${encodeURIComponent(calories)}` : ""}${prepTime ? `&prepTime=${encodeURIComponent(prepTime)}` : ""}`;
+  const ogImageUrl =
+    `/api/og?title=${encodeURIComponent(title)}&tag=${tag}` +
+    (calories  ? `&calories=${encodeURIComponent(calories)}`   : "") +
+    (prepTime  ? `&prepTime=${encodeURIComponent(prepTime)}`   : "");
 
   return {
     title: `${title} — Pantry to Plate`,
@@ -44,6 +51,10 @@ export async function generateMetadata({ searchParams }: Props): Promise<Metadat
   };
 }
 
-export default function ShareLayout({ children }: { children: React.ReactNode }) {
+export default function ShareLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return <>{children}</>;
 }

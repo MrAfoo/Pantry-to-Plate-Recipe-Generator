@@ -290,10 +290,16 @@ export default function Home() {
   const [unavailableSuggestions, setUnavailableSuggestions] = useState<string[]>([]);
   const resultsRef = useRef<HTMLDivElement>(null);
 
-  // Load history count on mount
+  // Load history count on mount + whenever localStorage changes (e.g. delete from sidebar)
   useEffect(() => {
     setHistoryCount(loadHistory().length);
   }, [historyRefreshKey]);
+
+  useEffect(() => {
+    const handleStorage = () => setHistoryCount(loadHistory().length);
+    window.addEventListener("storage", handleStorage);
+    return () => window.removeEventListener("storage", handleStorage);
+  }, []);
 
   // ---------------------------------------------------------------------------
   // File reading helper
