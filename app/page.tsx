@@ -368,13 +368,39 @@ export default function Home() {
   }, []);
 
   // ---------------------------------------------------------------------------
-  // File reading helper
+  // File reading + compression helper
+  // Compresses image to max 1280px on longest side, JPEG quality 0.82
+  // Mobile camera photos (3–8 MB) shrink to ~200–400 KB — safe for API
   // ---------------------------------------------------------------------------
-  const readFileAsBase64 = (file: File): Promise<string> =>
+  const compressImage = (file: File): Promise<string> =>
     new Promise((resolve, reject) => {
       const reader = new FileReader();
-      reader.onload = () => resolve(reader.result as string);
       reader.onerror = reject;
+      reader.onload = () => {
+        const img = new Image();
+        img.onerror = reject;
+        img.onload = () => {
+          const MAX_DIM = 1280;
+          let { width, height } = img;
+          if (width > MAX_DIM || height > MAX_DIM) {
+            if (width > height) {
+              height = Math.round((height * MAX_DIM) / width);
+              width = MAX_DIM;
+            } else {
+              width = Math.round((width * MAX_DIM) / height);
+              height = MAX_DIM;
+            }
+          }
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext("2d");
+          if (!ctx) { reject(new Error("Canvas not supported")); return; }
+          ctx.drawImage(img, 0, 0, width, height);
+          resolve(canvas.toDataURL("image/jpeg", 0.82));
+        };
+        img.src = reader.result as string;
+      };
       reader.readAsDataURL(file);
     });
 
@@ -411,12 +437,15 @@ export default function Home() {
       if (validFiles.length === 0) return;
 
       const newImageFiles: ImageFile[] = await Promise.all(
-        validFiles.map(async (f) => ({
-          id: crypto.randomUUID(),
-          base64: await readFileAsBase64(f),
-          name: f.name,
-          sizeMB: f.size / 1024 / 1024,
-        }))
+        validFiles.map(async (f) => {
+          const base64 = await compressImage(f);
+          return {
+            id: crypto.randomUUID(),
+            base64,
+            name: f.name,
+            sizeMB: parseFloat((base64.length * 0.75 / 1024 / 1024).toFixed(2)),
+          };
+        })
       );
 
       setImages((prev) => [...prev, ...newImageFiles].slice(0, MAX_IMAGES));

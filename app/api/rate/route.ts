@@ -42,12 +42,12 @@ async function getRatings(title: string): Promise<RatingEntry> {
   const client = getRedis();
 
   if (client) {
-    // Redis stores as hash: { good: "5", bad: "2" }
-    const data = await client.hgetall<Record<string, string>>(key);
+    // Upstash hgetall returns values as-is (may be string or number depending on client version)
+    const data = await client.hgetall(key) as Record<string, string | number> | null;
     if (data) {
       return {
-        good: parseInt(data.good ?? "0", 10),
-        bad:  parseInt(data.bad  ?? "0", 10),
+        good: Number(data.good ?? 0),
+        bad:  Number(data.bad  ?? 0),
       };
     }
     return { good: 0, bad: 0 };
@@ -67,10 +67,10 @@ async function incrementVote(title: string, vote: "good" | "bad"): Promise<Ratin
     await client.hincrby(key, vote, 1);
     // Set a long TTL (1 year) so keys don't expire unexpectedly
     await client.expire(key, 60 * 60 * 24 * 365);
-    const data = await client.hgetall<Record<string, string>>(key);
+    const data = await client.hgetall(key) as Record<string, string | number> | null;
     return {
-      good: parseInt(data?.good ?? "0", 10),
-      bad:  parseInt(data?.bad  ?? "0", 10),
+      good: Number(data?.good ?? 0),
+      bad:  Number(data?.bad  ?? 0),
     };
   }
 
