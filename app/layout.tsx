@@ -20,6 +20,15 @@ export const metadata: Metadata = {
     title: "Pantry to Plate",
   },
   formatDetection: { telephone: false },
+  icons: {
+    icon: [
+      { url: "/icons/favicon-32.png", sizes: "32x32", type: "image/png" },
+      { url: "/icons/icon-192.png", sizes: "192x192", type: "image/png" },
+    ],
+    apple: [
+      { url: "/icons/apple-touch-icon.png", sizes: "180x180", type: "image/png" },
+    ],
+  },
 };
 
 export default function RootLayout({
@@ -29,9 +38,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en" suppressHydrationWarning>
-      <body className="min-h-screen font-sans transition-colors duration-300">
-        {/* PWA theme color */}
+      <head>
+        {/* PWA theme color — must be in <head> for mobile browsers */}
         <meta name="theme-color" content="#f97316" />
+        {/* iOS Safari specific */}
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Pantry to Plate" />
+        <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
+      </head>
+      <body className="min-h-screen font-sans transition-colors duration-300">
         <ThemeProvider>
           {children}
         </ThemeProvider>
