@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { Recipe } from "../api/generate/route";
+import RecipeRating from "./RecipeRating";
 
 // ---------------------------------------------------------------------------
 // Icons
@@ -162,7 +163,13 @@ async function exportToPDF(recipe: Recipe) {
 // ---------------------------------------------------------------------------
 function buildShareUrl(recipe: Recipe): string {
   const payload = btoa(encodeURIComponent(JSON.stringify(recipe)));
-  return `${window.location.origin}${window.location.pathname}#recipe=${payload}`;
+  const params = new URLSearchParams({
+    title: recipe.title,
+    tag: recipe.tag ?? "special",
+    ...(recipe.nutrition?.calories ? { calories: recipe.nutrition.calories } : {}),
+    ...(recipe.nutrition?.prepTime ? { prepTime: recipe.nutrition.prepTime } : {}),
+  });
+  return `${window.location.origin}/recipe/share?${params.toString()}#recipe=${payload}`;
 }
 async function copyShareLink(recipe: Recipe, onCopied: () => void) {
   const url = buildShareUrl(recipe);
@@ -298,6 +305,11 @@ export default function RecipeCard({ recipe, index }: { recipe: Recipe; index: n
             </p>
           </div>
         )}
+      </div>
+
+      {/* Rating widget */}
+      <div className="px-5 pb-2">
+        <RecipeRating recipeTitle={recipe.title} />
       </div>
 
       {/* Action buttons */}
