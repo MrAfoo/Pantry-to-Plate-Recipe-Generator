@@ -173,7 +173,7 @@ function DropzoneArea({
                 </p>
                 <p className="text-sm text-gray-400 dark:text-gray-500 mt-1">
                   or <span className="text-brand-600 dark:text-brand-400 font-semibold underline underline-offset-2">browse files</span>
-                  &nbsp;— up to {MAX_IMAGES} images, max {MAX_FILE_SIZE_MB} MB each
+                  &nbsp;— max {MAX_IMAGES} images, max {MAX_FILE_SIZE_MB} MB each
                 </p>
               </div>
             </>
@@ -520,7 +520,7 @@ export default function Home() {
             <span className="gradient-text">fridge?</span>
           </h1>
           <p className="mt-4 text-lg text-gray-500 dark:text-gray-400 max-w-xl mx-auto">
-            Drop up to <strong>{MAX_IMAGES} photos</strong> of your fridge or pantry. Our AI chef
+            Drop <strong>1 to {MAX_IMAGES} photos</strong> of your fridge or pantry. Our AI chef
             will craft <strong>3 delicious recipes</strong> from everything it sees.
           </p>
         </div>
@@ -699,7 +699,7 @@ export default function Home() {
         {images.length === 0 && !isLoading && !error && !recipes && (
           <div className="mt-4 flex flex-wrap justify-center gap-6 text-center animate-fade-in">
             {[
-              { emoji: "📸", label: `Drop up to ${MAX_IMAGES} fridge photos` },
+              { emoji: "📸", label: `Upload 1–${MAX_IMAGES} fridge photos` },
               { emoji: "🔍", label: "Scan & edit detected ingredients" },
               { emoji: "🍳", label: "Get 3 custom recipes instantly" },
               { emoji: "💾", label: "Save as PDF or share a link" },
