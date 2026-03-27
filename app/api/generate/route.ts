@@ -96,6 +96,10 @@ Look carefully at ALL the ingredients visible across all the ${imageWord} provid
 
 YOUR TASK: Return exactly 3 recipes following this STRICT TIER SYSTEM:
 
+IMPORTANT: ALL 3 recipes MUST be solid FOOD dishes (meals you eat with a fork/spoon/hands).
+Do NOT suggest drinks, smoothies, juices, shakes, teas, coffees, or any beverage — even if liquid ingredients are visible.
+Focus on cooked or assembled food dishes only.
+
 RECIPE TIER RULES:
 1. Recipe #1 — tag: "common" — A simple, everyday meal anyone can make with the visible ingredients (e.g. scrambled eggs, toast, simple salad). Must be achievable with ONLY what is visible.
 2. Recipe #2 — tag: "good" — A more impressive, flavourful dish using the visible ingredients creatively (e.g. a stir-fry, frittata, grain bowl). Must use ONLY visible ingredients.
@@ -106,13 +110,14 @@ Look at the ingredients. Think of popular dishes people often want (pizza, burge
 If the ingredients are clearly NOT sufficient to make those dishes, list up to 4 such dish names in "unavailableSuggestions".
 If the ingredients ARE sufficient for those dishes, do NOT include them (they should appear as recipes instead).
 
-ADDITIONAL TASK — grocerySuggestions (ONLY if very few ingredients are visible, i.e. fewer than 4 distinct food items):
+ADDITIONAL TASK — grocerySuggestions (ONLY if fewer than 5 distinct food items are visible):
 If the user has very few ingredients, suggest 3 minimal grocery lists. Each suggestion should:
-- Pick a popular, satisfying dish the user is close to being able to make
+- Pick a popular, satisfying FOOD DISH (not a drink) the user is close to being able to make
 - List only 2–4 items they need to BUY (not what they already have)
-- Include a short encouraging reason that mentions what they already have
-Format: array of objects with "dish", "buy" (array of strings), and "reason" (one sentence, max 15 words).
-If the user has 4 or more distinct ingredients, set "grocerySuggestions" to an empty array [].
+- Include a short encouraging reason that mentions what they already have (max 15 words)
+- The "buy" list must be MINIMAL — only the essential missing items, nothing extra
+Format: array of objects with "dish", "buy" (array of strings), and "reason" (one sentence).
+If the user has 5 or more distinct food ingredients, set "grocerySuggestions" to an empty array [].
 
 NUTRITION: For each recipe, estimate realistic nutritional info per serving:
 - calories (e.g. "~380 kcal")

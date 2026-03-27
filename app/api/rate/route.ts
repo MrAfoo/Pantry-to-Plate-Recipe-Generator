@@ -7,17 +7,33 @@ import { Redis } from "@upstash/redis";
 // Falls back to in-memory store if env vars are not set (local dev without Redis).
 // ---------------------------------------------------------------------------
 let redis: Redis | null = null;
+let redisInitFailed = false;
 
 function getRedis(): Redis | null {
+  // Don't retry if we already know env vars are missing
+  if (redisInitFailed) return null;
   if (redis) return redis;
+
   const url   = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+
   if (!url || !token) {
     console.warn("[rate] Upstash env vars not set — falling back to in-memory store.");
+    console.warn("[rate] UPSTASH_REDIS_REST_URL:", url ? "SET" : "MISSING");
+    console.warn("[rate] UPSTASH_REDIS_REST_TOKEN:", token ? "SET" : "MISSING");
+    redisInitFailed = true;
     return null;
   }
-  redis = new Redis({ url, token });
-  return redis;
+
+  try {
+    redis = new Redis({ url, token });
+    console.log("[rate] Redis client initialised successfully.");
+    return redis;
+  } catch (err) {
+    console.error("[rate] Failed to initialise Redis client:", err);
+    redisInitFailed = true;
+    return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
