@@ -245,7 +245,7 @@ function GroceryCard({ suggestion, index }: { suggestion: GrocerySuggestion; ind
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
-    const text = `Shopping list for ${suggestion.dish}:\n${suggestion.buy.map((item, i) => `${i + 1}. ${item}`).join("\n")}`;
+    const text = `🛒 Shopping list to make "${suggestion.dish}":\n\n${suggestion.buy.map((item, i) => `${i + 1}. ${item}`).join("\n")}\n\n${suggestion.reason}`;
     try {
       await navigator.clipboard.writeText(text);
     } catch {
@@ -257,27 +257,34 @@ function GroceryCard({ suggestion, index }: { suggestion: GrocerySuggestion; ind
 
   return (
     <div
-      className="glass-card rounded-2xl border border-green-100 dark:border-green-900/40 overflow-hidden animate-slide-up flex flex-col"
+      className="rounded-2xl border border-green-100 dark:border-green-900/40 overflow-hidden animate-slide-up flex flex-col bg-white dark:bg-gray-800/60 shadow-md hover:shadow-lg transition-shadow duration-200"
       style={{ animationDelay: `${index * 100}ms`, animationFillMode: "both" }}
     >
       {/* Header */}
-      <div className="bg-green-500 dark:bg-green-700 px-4 py-3 flex items-center gap-2">
-        <span className="text-lg">🍽️</span>
+      <div className="bg-gradient-to-r from-green-500 to-emerald-500 dark:from-green-700 dark:to-emerald-700 px-4 py-3.5 flex items-center gap-2.5">
+        <span className="text-xl">🍽️</span>
         <h4 className="font-bold text-white text-sm leading-snug flex-1">{suggestion.dish}</h4>
+        <span className="text-xs bg-white/20 text-white px-2 py-0.5 rounded-full font-medium whitespace-nowrap">
+          {suggestion.buy.length} item{suggestion.buy.length !== 1 ? "s" : ""}
+        </span>
       </div>
 
       <div className="px-4 py-4 flex flex-col flex-1">
-        {/* Reason */}
-        <p className="text-xs text-gray-500 dark:text-gray-400 mb-3 italic">{suggestion.reason}</p>
+        {/* Warm polite message */}
+        <div className="bg-green-50 dark:bg-green-950/30 border border-green-100 dark:border-green-900/40 rounded-xl px-3.5 py-3 mb-4">
+          <p className="text-xs text-green-800 dark:text-green-300 leading-relaxed">
+            {suggestion.reason}
+          </p>
+        </div>
 
         {/* Buy list */}
-        <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2">
-          🛒 Add to cart
+        <p className="text-[10px] font-bold uppercase tracking-widest text-green-600 dark:text-green-400 mb-2.5">
+          🛒 Just pick up these
         </p>
-        <ul className="space-y-1.5 flex-1">
+        <ul className="space-y-2 flex-1">
           {suggestion.buy.map((item, j) => (
-            <li key={j} className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 font-medium">
-              <span className="w-5 h-5 rounded-full bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
+            <li key={j} className="flex items-center gap-2.5 text-sm text-gray-700 dark:text-gray-200 font-medium">
+              <span className="w-6 h-6 rounded-full bg-green-100 dark:bg-green-900/50 text-green-600 dark:text-green-400 flex items-center justify-center text-xs font-bold flex-shrink-0">
                 {j + 1}
               </span>
               {item}
@@ -288,13 +295,13 @@ function GroceryCard({ suggestion, index }: { suggestion: GrocerySuggestion; ind
         {/* Copy button */}
         <button
           onClick={handleCopy}
-          className={`mt-4 w-full flex items-center justify-center gap-2 text-xs font-semibold py-2 rounded-xl border transition-all duration-200
+          className={`mt-4 w-full flex items-center justify-center gap-2 text-xs font-semibold py-2.5 rounded-xl border transition-all duration-200
             ${copied
-              ? "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-200 dark:border-green-800"
-              : "bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-green-300 dark:hover:border-green-600 hover:text-green-600 dark:hover:text-green-400 hover:scale-[1.02]"
+              ? "bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 border-green-300 dark:border-green-700"
+              : "bg-white dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-200 dark:border-gray-600 hover:border-green-300 dark:hover:border-green-600 hover:text-green-600 dark:hover:text-green-400 hover:scale-[1.02]"
             }`}
         >
-          {copied ? "✓ Copied!" : "📋 Copy list"}
+          {copied ? "✓ Copied to clipboard!" : "📋 Copy shopping list"}
         </button>
       </div>
     </div>
@@ -789,18 +796,22 @@ export default function Home() {
             </div>
 
 
-            {/* Grocery suggestions — shown when ingredients are too few */}
+            {/* Grocery suggestions — shown when ingredients are too few or don't combine well */}
             {grocerySuggestions.length > 0 && (
-              <div className="mt-10 animate-fade-in">
-                <div className="text-center mb-6">
-                  <h3 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-                    🛒 Short on ingredients? Buy a little, cook a lot!
+              <div className="mt-12 animate-fade-in">
+                {/* Section header */}
+                <div className="text-center mb-8">
+                  <div className="inline-flex items-center gap-2 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-semibold px-4 py-1.5 rounded-full mb-3">
+                    🛒 Friendly Grocery Suggestions
+                  </div>
+                  <h3 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                    A little shopping goes a long way!
                   </h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-                    Pick up just a few items and unlock a full meal with what you already have.
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mt-2 max-w-lg mx-auto">
+                    Your current ingredients are limited — but you&apos;re so close! Here are 3 simple ideas. Pick up just a couple of items and enjoy a proper meal. 😊
                   </p>
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
                   {grocerySuggestions.map((s, i) => (
                     <GroceryCard key={i} suggestion={s} index={i} />
                   ))}

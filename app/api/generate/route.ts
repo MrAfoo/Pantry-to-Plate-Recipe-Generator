@@ -110,14 +110,22 @@ Look at the ingredients. Think of popular dishes people often want (pizza, burge
 If the ingredients are clearly NOT sufficient to make those dishes, list up to 4 such dish names in "unavailableSuggestions".
 If the ingredients ARE sufficient for those dishes, do NOT include them (they should appear as recipes instead).
 
-ADDITIONAL TASK — grocerySuggestions (ONLY if fewer than 5 distinct food items are visible):
-If the user has very few ingredients, suggest 3 minimal grocery lists. Each suggestion should:
-- Pick a popular, satisfying FOOD DISH (not a drink) the user is close to being able to make
-- List only 2–4 items they need to BUY (not what they already have)
-- Include a short encouraging reason that mentions what they already have (max 15 words)
-- The "buy" list must be MINIMAL — only the essential missing items, nothing extra
-Format: array of objects with "dish", "buy" (array of strings), and "reason" (one sentence).
-If the user has 5 or more distinct food ingredients, set "grocerySuggestions" to an empty array [].
+ADDITIONAL TASK — grocerySuggestions:
+Evaluate whether the available ingredients can form at least one proper, satisfying meal on their own.
+Show grocery suggestions in EITHER of these two cases:
+1. Fewer than 5 distinct food items are visible, OR
+2. The ingredients don't naturally work together for any proper meal (e.g. banana + hot sauce + rice + lemon = no cohesive dish)
+
+If grocery suggestions are needed, suggest exactly 3 minimal grocery lists. Each suggestion must:
+- Pick a popular, satisfying FOOD DISH (not a drink) the user is close to being able to make with what they have
+- List only 2–4 essential items they need to BUY (not what they already have — keep it minimal)
+- Include a warm, polite, encouraging message that:
+  * Mentions what they already have by name
+  * Tells them exactly what to buy
+  * Ends with what delicious meal they'll be able to enjoy
+  * Tone: friendly, warm, encouraging — like a helpful friend (e.g. "You already have eggs and butter — just pick up some flour and milk, and you'll be enjoying fluffy pancakes in no time! 🥞")
+Format: array of objects with "dish", "buy" (array of strings), and "reason" (one warm sentence, max 25 words).
+If the ingredients work well together for proper meals, set "grocerySuggestions" to an empty array [].
 
 NUTRITION: For each recipe, estimate realistic nutritional info per serving:
 - calories (e.g. "~380 kcal")
