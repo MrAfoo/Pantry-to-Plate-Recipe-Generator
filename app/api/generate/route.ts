@@ -83,15 +83,37 @@ export async function POST(req: NextRequest) {
       ? `\nThe user has confirmed these specific ingredients are available: ${confirmedIngredients.join(", ")}.`
       : "";
 
-    // Build dietary preferences context
+    // Build dietary preferences context + conflict detection
     const dietaryContext = dietaryPreferences?.length
-      ? `\nCRITICAL DIETARY REQUIREMENTS: The user follows these dietary preferences: ${dietaryPreferences.join(", ")}. ALL 3 recipes MUST strictly comply with these requirements. Do NOT include any ingredients that violate these preferences.`
+      ? `\nCRITICAL DIETARY REQUIREMENTS: The user follows these dietary preferences: ${dietaryPreferences.join(", ")}.
+ALL 3 recipes MUST strictly comply with these requirements.
+Do NOT include any ingredients that violate these preferences.
+
+DIETARY CONFLICT HANDLING — VERY IMPORTANT:
+Some dietary preferences require specific KEY INGREDIENTS that may not be visible in the image.
+Examples:
+- "keto" requires high-fat, low-carb foods: meat, fish, eggs, cheese, nuts, avocado, butter, cream. If NO meat/protein source is visible and the user selected "keto", you MUST add a grocerySuggestion telling them to buy the missing keto protein (e.g. chicken, beef, salmon) and how it combines with what they have.
+- "vegan" requires no animal products: if eggs/dairy are the only protein visible, suggest plant proteins to buy.
+- "halal" requires halal-certified meat: if no halal meat is visible, suggest buying it.
+- "high-protein" / "keto": if no protein source visible, flag this in grocerySuggestions.
+
+If the visible ingredients CANNOT satisfy the selected dietary preference properly, STILL generate 3 recipes as best you can, BUT also add grocerySuggestions that say something like: "You chose keto but there's no meat or protein visible — just pick up some chicken breast and combine with your [visible ingredients] for a proper keto meal!"`
       : "";
 
     const imageWord = images.length > 1 ? "images" : "image";
 
     // ---- System prompt ----------------------------------------------------
     const SYSTEM_PROMPT = `You are a master chef and nutritionist with encyclopedic knowledge of world cuisines.
+
+IMAGE ANALYSIS INSTRUCTIONS — READ CAREFULLY:
+- Examine every corner of the ${imageWord} with extreme attention to detail
+- Identify ALL food items: fresh produce, packaged goods, condiments, sauces, dairy, leftovers, spices
+- Read labels and packaging text where visible to identify specific products
+- Note quantities and freshness where relevant (e.g. "half an onion", "leftover cooked rice")
+- Do NOT miss items at the back, on shelves, in containers, or partially visible
+- Identify the cuisine style the ingredients suggest (Asian, Mediterranean, Western, etc.)
+- Only list ingredients you can actually SEE — do not invent or assume
+
 Look carefully at ALL the ingredients visible across all the ${imageWord} provided.${ingredientContext}${dietaryContext}
 
 YOUR TASK: Return exactly 3 recipes following this STRICT TIER SYSTEM:
@@ -103,7 +125,9 @@ Focus on cooked or assembled food dishes only.
 RECIPE TIER RULES:
 1. Recipe #1 — tag: "common" — A simple, everyday meal anyone can make with the visible ingredients (e.g. scrambled eggs, toast, simple salad). Must be achievable with ONLY what is visible.
 2. Recipe #2 — tag: "good" — A more impressive, flavourful dish using the visible ingredients creatively (e.g. a stir-fry, frittata, grain bowl). Must use ONLY visible ingredients.
-3. Recipe #3 — tag: "special" — The BEST possible dish from these ingredients, restaurant-quality if possible. Must use ONLY visible ingredients.
+3. Recipe #3 — tag: "special" — MUST be a rice dish OR a flatbread/bread-based dish (e.g. fried rice, pilaf, biryani, rice bowl, naan wrap, flatbread pizza, stuffed flatbread, quesadilla, pita pocket).
+   IMPORTANT FOR RECIPE #3: Rice and flatbreads/bread are PANTRY STAPLES — people keep them in cupboards, not in the fridge. So even if rice or flatbread is NOT visible in the image, you MAY assume the user has plain white rice or basic flatbread/tortilla available as a pantry staple.
+   Build Recipe #3 around the visible ingredients served WITH rice or ON/IN flatbread. Make it restaurant-quality and exciting.
 
 ADDITIONAL TASK — unavailableSuggestions:
 Look at the ingredients. Think of popular dishes people often want (pizza, burger, pasta, sushi, etc.). 
