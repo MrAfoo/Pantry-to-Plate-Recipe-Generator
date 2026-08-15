@@ -14,7 +14,7 @@ function getRedis(): Redis | null {
   if (redisInitFailed) return null;
   if (redis) return redis;
 
-  const url   = process.env.UPSTASH_REDIS_REST_URL;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
   const token = process.env.UPSTASH_REDIS_REST_TOKEN;
 
   if (!url || !token) {
@@ -67,7 +67,7 @@ async function getRatings(title: string): Promise<RatingEntry> {
     if (data) {
       return {
         good: Number(data.good ?? 0),
-        bad:  Number(data.bad  ?? 0),
+        bad: Number(data.bad ?? 0),
       };
     }
     return { good: 0, bad: 0 };
@@ -90,7 +90,7 @@ async function incrementVote(title: string, vote: "good" | "bad"): Promise<Ratin
     const data = await client.hgetall(key) as Record<string, string | number> | null;
     return {
       good: Number(data?.good ?? 0),
-      bad:  Number(data?.bad  ?? 0),
+      bad: Number(data?.bad ?? 0),
     };
   }
 

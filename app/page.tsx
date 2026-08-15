@@ -387,9 +387,9 @@ export default function Home() {
         const img = new Image();
         img.onerror = reject;
         img.onload = () => {
-          // 1920px preserves enough detail for AI ingredient recognition
-          // JPEG 0.92 quality keeps text/labels on packaging readable
-          const MAX_DIM = 1920;
+          // 400px provides clear recognition while keeping 5-image payloads well below Groq TPM limits
+          // JPEG 0.70 keeps token usage minimal
+          const MAX_DIM = 400;
           let { width, height } = img;
           if (width > MAX_DIM || height > MAX_DIM) {
             if (width > height) {
@@ -406,7 +406,7 @@ export default function Home() {
           const ctx = canvas.getContext("2d");
           if (!ctx) { reject(new Error("Canvas not supported")); return; }
           ctx.drawImage(img, 0, 0, width, height);
-          resolve(canvas.toDataURL("image/jpeg", 0.92));
+          resolve(canvas.toDataURL("image/jpeg", 0.70));
         };
         img.src = reader.result as string;
       };
@@ -590,8 +590,8 @@ export default function Home() {
           </div>
 
           <div className="flex items-center gap-3">
-            <span className="text-xs font-medium text-gray-400 dark:text-gray-500 hidden sm:block">
-              Powered by Groq · Llama 4 Vision
+            <span className="text-xs text-gray-500 dark:text-gray-400 font-medium hidden sm:inline">
+              Powered by Groq · Vision AI
             </span>
             {/* Theme toggle */}
             <ThemeToggle />
@@ -860,7 +860,7 @@ export default function Home() {
 
       {/* ---- Footer ---- */}
       <footer className="mt-20 py-8 border-t border-orange-100 dark:border-gray-800 text-center text-xs text-gray-400 dark:text-gray-600 transition-colors">
-        Built with Next.js · Groq · Llama 4 Vision · Tailwind CSS · jsPDF
+        Built with Next.js · Groq · Vision AI · Tailwind CSS · jsPDF
       </footer>
     </main>
   );

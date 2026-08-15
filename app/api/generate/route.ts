@@ -187,44 +187,72 @@ Example shape (content is fictional — follow only the structure):
   ]
 }`;
 
-    // Build image blocks
-    const imageBlocks: Groq.Chat.ChatCompletionContentPart[] = images.map(
-      (img) => ({ type: "image_url" as const, image_url: { url: img } })
-    );
+    let ingredientsList: string = confirmedIngredients?.join(", ") ?? "";
 
-    const userContent: Groq.Chat.ChatCompletionContentPart[] = [
-      ...imageBlocks,
-      {
-        type: "text" as const,
-        text:
-          images.length > 1
-            ? `Here are ${images.length} photos of my fridge/pantry. Generate exactly 3 tiered recipes (1 common, 1 good, 1 special) and note any popular dishes I can't make. Respond in strict JSON only.`
-            : "Here is a photo of my fridge/pantry. Generate exactly 3 tiered recipes (1 common, 1 good, 1 special) and note any popular dishes I can't make. Respond in strict JSON only.",
-      },
-    ];
+    if (!ingredientsList) {
+      // STEP 1 (Vision): Quickly identify ingredients from photos using Qwen Vision
+      const imageBlocks: Groq.Chat.ChatCompletionContentPart[] = images.map(
+        (img) => ({ type: "image_url" as const, image_url: { url: img } })
+      );
 
-    // ---- Call Groq Vision -------------------------------------------------
+      const visionCompletion = await groq.chat.completions.create({
+        model: "qwen/qwen3.6-27b",
+        messages: [
+          {
+            role: "system",
+            content: "You are an ingredient detector. Look at the photos and list all food items, ingredients, condiments, and produce visible. Return a clean comma-separated list of items.",
+          },
+          {
+            role: "user",
+            content: [
+              ...imageBlocks,
+              {
+                type: "text" as const,
+                text: "List every food item and ingredient visible in these images as a comma-separated list.",
+              },
+            ],
+          },
+        ],
+        temperature: 0.2,
+        max_tokens: 500,
+      });
+
+      const rawVision = visionCompletion.choices[0]?.message?.content ?? "";
+      ingredientsList = rawVision.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    }
+
+    // STEP 2 (Chef/Brain): Generate 3 tiered recipes in strict JSON using Llama 3.3 70B (high limit, fast, perfect JSON)
     const completion = await groq.chat.completions.create({
-      model: "meta-llama/llama-4-scout-17b-16e-instruct",
+      model: "llama-3.3-70b-versatile",
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
-        { role: "user", content: userContent },
+        {
+          role: "user",
+          content: `Here are the ingredients available: ${ingredientsList}.\nGenerate exactly 3 tiered recipes (1 common, 1 good, 1 special), unavailable dishes, and grocery suggestions. Respond in strict JSON only.`,
+        },
       ],
-      temperature: 0.6,
-      max_tokens: 3000,
+      response_format: { type: "json_object" },
+      temperature: 0.5,
+      max_tokens: 2500,
     });
 
     const rawContent = completion.choices[0]?.message?.content ?? "";
 
     // ---- Parse JSON safely ------------------------------------------------
-    const cleaned = rawContent
-      .replace(/```json\s*/gi, "")
-      .replace(/```\s*/g, "")
-      .trim();
-
     let parsed: GenerateResponse;
     try {
-      parsed = JSON.parse(cleaned);
+      let clean = rawContent.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+      const codeBlockMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+      if (codeBlockMatch) {
+        clean = codeBlockMatch[1].trim();
+      } else {
+        const firstBrace = clean.indexOf("{");
+        const lastBrace = clean.lastIndexOf("}");
+        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+          clean = clean.slice(firstBrace, lastBrace + 1);
+        }
+      }
+      parsed = JSON.parse(clean);
     } catch {
       console.error("JSON parse error. Raw content:", rawContent);
       return NextResponse.json(
