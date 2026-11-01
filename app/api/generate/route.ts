@@ -77,6 +77,8 @@ export async function POST(req: NextRequest) {
     }
 
     const groq = new Groq({ apiKey });
+    const visionModel = process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
+    const chatModel = process.env.GROQ_CHAT_MODEL || "qwen/qwen3.8-27b";
 
     // Build confirmed ingredients context if provided
     const ingredientContext = confirmedIngredients?.length
@@ -196,7 +198,7 @@ Example shape (content is fictional — follow only the structure):
       );
 
       const visionCompletion = await groq.chat.completions.create({
-        model: "qwen/qwen3.6-27b",
+        model: visionModel,
         messages: [
           {
             role: "system",
@@ -223,7 +225,7 @@ Example shape (content is fictional — follow only the structure):
 
     // STEP 2 (Chef/Brain): Generate 3 tiered recipes in strict JSON using Llama 3.3 70B (high limit, fast, perfect JSON)
     const completion = await groq.chat.completions.create({
-      model: "llama-3.3-70b-versatile",
+      model: chatModel,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         {

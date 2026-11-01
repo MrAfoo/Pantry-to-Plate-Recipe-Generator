@@ -31,6 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     const groq = new Groq({ apiKey });
+    const chatModel = process.env.GROQ_CHAT_MODEL || "qwen/qwen3.8-27b";
 
     const SYSTEM_PROMPT = `You are a professional chef and food scientist specializing in ingredient substitutions.
 Given an ingredient and optionally a recipe context, suggest exactly 3 practical substitutes.
@@ -56,7 +57,7 @@ Example:
       : `What are 3 practical substitutes for "${ingredient}"?`;
 
     const completion = await groq.chat.completions.create({
-      model: "llama-3.1-8b-instant",
+      model: chatModel,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         { role: "user",   content: userMessage },

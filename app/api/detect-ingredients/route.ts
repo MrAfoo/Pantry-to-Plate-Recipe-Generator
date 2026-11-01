@@ -35,6 +35,7 @@ export async function POST(req: NextRequest) {
     }
 
     const groq = new Groq({ apiKey });
+    const visionModel = process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
 
     const SYSTEM_PROMPT = `You are a precise ingredient-detection assistant.
 Look carefully at ALL the food items, ingredients, condiments, vegetables, fruits, dairy, meats, and beverages visible across all the provided images.
@@ -55,7 +56,7 @@ Example output:
     );
 
     const completion = await groq.chat.completions.create({
-      model: "qwen/qwen3.6-27b",
+      model: visionModel,
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         {
