@@ -34,6 +34,39 @@ export interface GenerateResponse {
 }
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+async function createChatCompletionWithRetry(
+  groq: Groq,
+  params: Parameters<typeof groq.chat.completions.create>[0],
+  retries = 2
+) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await groq.chat.completions.create(params);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isRateLimit = errMsg.includes("429") || errMsg.toLowerCase().includes("rate limit");
+
+      if (isRateLimit && attempt < retries) {
+        // Try to parse suggested delay (e.g. "try again in 45ms")
+        const match = errMsg.match(/try again in (\d+)(ms|s)/i);
+        let waitMs = 1000 * (attempt + 1);
+        if (match) {
+          const val = parseInt(match[1], 10);
+          waitMs = match[2].toLowerCase() === "s" ? val * 1000 + 200 : val + 200;
+        }
+        console.warn(`[Groq 429] Rate limited. Retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Chat completion failed after retries.");
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/generate
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
@@ -77,10 +110,10 @@ export async function POST(req: NextRequest) {
     }
 
     const groq = new Groq({ apiKey });
-    // Vision model: must support image input (qwen/qwen3.8-27b is the only one on Groq free tier)
+    // Vision model: must support image input (qwen/qwen3.8-27b on Groq)
     const visionModel = process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
-    // Chat model: text-only — use a different model to spread load across separate rate limit buckets
-    const chatModel = process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-20b";
+    // Chat model: text-only — use OpenAI GPT-OSS-120B on Groq (separate rate limit bucket, no 1000 OTPM lock)
+    const chatModel = process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b";
 
     // Optional context injected into the prompt
     const ingredientContext = confirmedIngredients?.length
@@ -122,7 +155,7 @@ Rules:
             (img) => ({ type: "image_url" as const, image_url: { url: img } })
           );
 
-          const visionCompletion = await groq.chat.completions.create({
+          const visionCompletion = await createChatCompletionWithRetry(groq, {
             model: visionModel,
             messages: [
               {
@@ -150,8 +183,10 @@ Rules:
     }
 
     // STEP 2 (Chef/Brain): Generate 3 tiered recipes in compact JSON
-    const completion = await groq.chat.completions.create({
+    const isGptOss = chatModel.toLowerCase().includes("gpt-oss");
+    const completion = await createChatCompletionWithRetry(groq, {
       model: chatModel,
+      ...(isGptOss ? { reasoning_effort: "low" } : {}),
       messages: [
         { role: "system", content: SYSTEM_PROMPT },
         {
@@ -161,7 +196,7 @@ Rules:
       ],
       response_format: { type: "json_object" },
       temperature: 0.5,
-      max_tokens: 900,
+      max_tokens: isGptOss ? 1500 : 900,
     });
 
     const rawContent = completion.choices[0]?.message?.content ?? "";

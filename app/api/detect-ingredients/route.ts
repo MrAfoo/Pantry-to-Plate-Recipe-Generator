@@ -39,6 +39,35 @@ function extractIngredients(raw: string): string[] {
   }
 }
 
+async function createChatCompletionWithRetry(
+  groq: Groq,
+  params: Parameters<typeof groq.chat.completions.create>[0],
+  retries = 2
+) {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await groq.chat.completions.create(params);
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : String(err);
+      const isRateLimit = errMsg.includes("429") || errMsg.toLowerCase().includes("rate limit");
+
+      if (isRateLimit && attempt < retries) {
+        const match = errMsg.match(/try again in (\d+)(ms|s)/i);
+        let waitMs = 1000 * (attempt + 1);
+        if (match) {
+          const val = parseInt(match[1], 10);
+          waitMs = match[2].toLowerCase() === "s" ? val * 1000 + 200 : val + 200;
+        }
+        console.warn(`[Groq detect-ingredients 429] Rate limited. Retrying in ${waitMs}ms (attempt ${attempt + 1}/${retries})...`);
+        await new Promise((r) => setTimeout(r, waitMs));
+        continue;
+      }
+      throw err;
+    }
+  }
+  throw new Error("Chat completion failed after retries.");
+}
+
 // ---------------------------------------------------------------------------
 // POST /api/detect-ingredients
 // Send one or more images → get back a flat list of detected ingredients
@@ -90,7 +119,7 @@ export async function POST(req: NextRequest) {
           (img) => ({ type: "image_url" as const, image_url: { url: img } })
         );
 
-        const completion = await groq.chat.completions.create({
+        const completion = await createChatCompletionWithRetry(groq, {
           model: visionModel,
           messages: [
             { role: "system", content: SYSTEM_PROMPT },
