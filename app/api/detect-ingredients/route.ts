@@ -75,19 +75,7 @@ export async function POST(req: NextRequest) {
     const groq = new Groq({ apiKey });
     const visionModel = process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
 
-    const SYSTEM_PROMPT = `You are a precise ingredient-detection assistant.
-Look carefully at ALL the food items, ingredients, condiments, vegetables, fruits, dairy, meats, and beverages visible across all the provided images.
-
-STRICT RULES:
-1. Return ONLY a valid JSON object with the key "ingredients" containing an array of strings.
-2. Each string is a single ingredient name, as specific as possible (e.g. "cherry tomatoes" not just "tomatoes").
-3. Include every distinct item you can see, even partial items.
-4. Do NOT include non-food items (plates, containers, shelves).
-
-Example output:
-{
-  "ingredients": ["eggs", "butter", "cheddar cheese", "milk", "spinach", "garlic", "olive oil"]
-}`;
+    const SYSTEM_PROMPT = `Return ONLY a JSON object: {"ingredients":["item1","item2",...]}. List every food item, ingredient, condiment, dairy, meat, or produce visible. Be specific (e.g. "cherry tomatoes"). Exclude non-food items. No prose.`;
 
     // Groq supports up to 3 images per request. Chunk larger lists into batches of <= 3.
     const CHUNK_SIZE = 3;
@@ -112,14 +100,14 @@ Example output:
                 ...imageBlocks,
                 {
                   type: "text" as const,
-                  text: "List every food ingredient you can see across all these images. Return JSON object with 'ingredients' array.",
+                  text: "List every food ingredient visible. Return JSON with 'ingredients' array.",
                 },
               ],
             },
           ],
           response_format: { type: "json_object" },
           temperature: 0.2,
-          max_tokens: 1200,
+          max_tokens: 400,
         });
 
         const raw = completion.choices[0]?.message?.content ?? "";
