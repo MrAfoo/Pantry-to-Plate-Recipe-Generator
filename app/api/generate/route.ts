@@ -49,7 +49,6 @@ async function createChatCompletionWithRetry(
       const isRateLimit = errMsg.includes("429") || errMsg.toLowerCase().includes("rate limit");
 
       if (isRateLimit && attempt < retries) {
-        // Try to parse suggested delay (e.g. "try again in 45ms")
         const match = errMsg.match(/try again in (\d+)(ms|s)/i);
         let waitMs = 1000 * (attempt + 1);
         if (match) {
@@ -112,7 +111,7 @@ export async function POST(req: NextRequest) {
     const groq = new Groq({ apiKey });
     // Vision model: must support image input (qwen/qwen3.8-27b on Groq)
     const visionModel = process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
-    // Chat model: text-only — use OpenAI GPT-OSS-120B on Groq (separate rate limit bucket, no 1000 OTPM lock)
+    // Chat model: text-only — default to openai/gpt-oss-120b for separate TPM pool
     const chatModel = process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-120b";
 
     // Optional context injected into the prompt
@@ -125,7 +124,7 @@ export async function POST(req: NextRequest) {
       : "";
 
     // ---- Compact system prompt (token-efficient) ---------------------------
-    const SYSTEM_PROMPT = `You are a chef. Given a list of ingredients, return ONLY valid JSON — no prose, no markdown.
+    const SYSTEM_PROMPT = `You are a chef. Given a list of ingredients, return ONLY valid JSON — no prose, no markdown fences.
 
 JSON shape:
 {"recipes":[{"title":"...","tag":"common|good|special","ingredients":["..."],"steps":["...","...","..."],"nutrition":{"calories":"~Xkcal","protein":"Xg","carbs":"Xg","fat":"Xg","prepTime":"X mins"},"tip":"..."}],"unavailableSuggestions":["..."],"grocerySuggestions":[{"dish":"...","buy":["..."],"reason":"..."}]}
@@ -184,22 +183,45 @@ Rules:
 
     // STEP 2 (Chef/Brain): Generate 3 tiered recipes in compact JSON
     const isGptOss = chatModel.toLowerCase().includes("gpt-oss");
-    const completion = await createChatCompletionWithRetry(groq, {
-      model: chatModel,
-      ...(isGptOss ? { reasoning_effort: "low" } : {}),
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: `Ingredients: ${ingredientsList}. Generate 3 tiered recipes. JSON only.`,
-        },
-      ],
-      response_format: { type: "json_object" },
-      temperature: 0.5,
-      max_tokens: isGptOss ? 1500 : 900,
-    });
+    let rawContent = "";
 
-    const rawContent = completion.choices[0]?.message?.content ?? "";
+    try {
+      const completion = await createChatCompletionWithRetry(groq, {
+        model: chatModel,
+        ...(isGptOss ? { reasoning_effort: "low" } : {}),
+        messages: [
+          { role: "system", content: SYSTEM_PROMPT },
+          {
+            role: "user",
+            content: `Ingredients: ${ingredientsList}. Generate 3 tiered recipes. Return strict JSON only.`,
+          },
+        ],
+        temperature: 0.4,
+        max_tokens: isGptOss ? 1500 : 900,
+      });
+
+      rawContent = completion.choices[0]?.message?.content ?? "";
+    } catch (err: unknown) {
+      // If primary model failed and was gpt-oss, fallback to qwen
+      if (isGptOss) {
+        console.warn("[generate] Primary model failed, falling back to qwen/qwen3.8-27b:", err);
+        const fallback = await createChatCompletionWithRetry(groq, {
+          model: "qwen/qwen3.8-27b",
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
+            {
+              role: "user",
+              content: `Ingredients: ${ingredientsList}. Generate 3 tiered recipes. Return strict JSON only.`,
+            },
+          ],
+          temperature: 0.4,
+          max_tokens: 900,
+        });
+        rawContent = fallback.choices[0]?.message?.content ?? "";
+      } else {
+        throw err;
+      }
+    }
 
     // ---- Parse JSON safely ------------------------------------------------
     let parsed: GenerateResponse;
