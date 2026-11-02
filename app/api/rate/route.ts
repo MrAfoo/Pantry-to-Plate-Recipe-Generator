@@ -4,13 +4,14 @@ import { Redis } from "@upstash/redis";
 
 // ---------------------------------------------------------------------------
 // Upstash Redis client
-// Falls back to in-memory store if env vars are not set (local dev without Redis).
+// Falls back to in-memory store if env vars are not set (local dev without Redis)
+// or if the Redis host is offline/unreachable.
 // ---------------------------------------------------------------------------
 let redis: Redis | null = null;
 let redisInitFailed = false;
 
 function getRedis(): Redis | null {
-  // Don't retry if we already know env vars are missing
+  // Don't retry if we already know env vars are missing or connection failed
   if (redisInitFailed) return null;
   if (redis) return redis;
 
@@ -37,7 +38,7 @@ function getRedis(): Redis | null {
 }
 
 // ---------------------------------------------------------------------------
-// In-memory fallback (used when Redis is not configured)
+// In-memory fallback (used when Redis is not configured or unreachable)
 // ---------------------------------------------------------------------------
 interface RatingEntry { good: number; bad: number; }
 const memoryStore = new Map<string, RatingEntry>();
@@ -62,15 +63,21 @@ async function getRatings(title: string): Promise<RatingEntry> {
   const client = getRedis();
 
   if (client) {
-    // Upstash hgetall returns values as-is (may be string or number depending on client version)
-    const data = await client.hgetall(key) as Record<string, string | number> | null;
-    if (data) {
-      return {
-        good: Number(data.good ?? 0),
-        bad: Number(data.bad ?? 0),
-      };
+    try {
+      // Upstash hgetall returns values as-is (may be string or number depending on client version)
+      const data = await client.hgetall(key) as Record<string, string | number> | null;
+      if (data) {
+        return {
+          good: Number(data.good ?? 0),
+          bad: Number(data.bad ?? 0),
+        };
+      }
+      return { good: 0, bad: 0 };
+    } catch (err) {
+      console.warn("[rate] Redis getRatings failed, falling back to memory store:", err);
+      redisInitFailed = true;
+      redis = null;
     }
-    return { good: 0, bad: 0 };
   }
 
   // Memory fallback
@@ -83,15 +90,21 @@ async function incrementVote(title: string, vote: "good" | "bad"): Promise<Ratin
   const client = getRedis();
 
   if (client) {
-    // HINCRBY is atomic — safe for concurrent requests
-    await client.hincrby(key, vote, 1);
-    // Set a long TTL (1 year) so keys don't expire unexpectedly
-    await client.expire(key, 60 * 60 * 24 * 365);
-    const data = await client.hgetall(key) as Record<string, string | number> | null;
-    return {
-      good: Number(data?.good ?? 0),
-      bad: Number(data?.bad ?? 0),
-    };
+    try {
+      // HINCRBY is atomic — safe for concurrent requests
+      await client.hincrby(key, vote, 1);
+      // Set a long TTL (1 year) so keys don't expire unexpectedly
+      await client.expire(key, 60 * 60 * 24 * 365);
+      const data = await client.hgetall(key) as Record<string, string | number> | null;
+      return {
+        good: Number(data?.good ?? 0),
+        bad: Number(data?.bad ?? 0),
+      };
+    } catch (err) {
+      console.warn("[rate] Redis incrementVote failed, falling back to memory store:", err);
+      redisInitFailed = true;
+      redis = null;
+    }
   }
 
   // Memory fallback
@@ -115,7 +128,7 @@ export async function GET(req: NextRequest) {
     const entry = await getRatings(title);
     return NextResponse.json({ good: entry.good, bad: entry.bad }, { status: 200 });
   } catch (err) {
-    console.error("[rate GET] Redis error:", err);
+    console.error("[rate GET] Error:", err);
     return NextResponse.json({ error: "Could not fetch ratings." }, { status: 500 });
   }
 }
@@ -142,7 +155,7 @@ export async function POST(req: NextRequest) {
       { status: 200 }
     );
   } catch (err) {
-    console.error("[rate POST] Redis error:", err);
+    console.error("[rate POST] Error:", err);
     return NextResponse.json({ error: "Could not submit vote." }, { status: 500 });
   }
 }

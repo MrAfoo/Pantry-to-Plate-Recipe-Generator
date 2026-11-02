@@ -192,38 +192,52 @@ Example shape (content is fictional — follow only the structure):
     let ingredientsList: string = confirmedIngredients?.join(", ") ?? "";
 
     if (!ingredientsList) {
-      // STEP 1 (Vision): Quickly identify ingredients from photos using Qwen Vision
-      const imageBlocks: Groq.Chat.ChatCompletionContentPart[] = images.map(
-        (img) => ({ type: "image_url" as const, image_url: { url: img } })
-      );
+      // STEP 1 (Vision): Quickly identify ingredients from photos using Qwen Vision.
+      // Groq limits to 3 images per request. Chunk larger lists and process in parallel.
+      const CHUNK_SIZE = 3;
+      const chunks: string[][] = [];
+      for (let i = 0; i < images.length; i += CHUNK_SIZE) {
+        chunks.push(images.slice(i, i + CHUNK_SIZE));
+      }
 
-      const visionCompletion = await groq.chat.completions.create({
-        model: visionModel,
-        messages: [
-          {
-            role: "system",
-            content: "You are an ingredient detector. Look at the photos and list all food items, ingredients, condiments, and produce visible. Return a clean comma-separated list of items.",
-          },
-          {
-            role: "user",
-            content: [
-              ...imageBlocks,
+      const chunkResults = await Promise.all(
+        chunks.map(async (chunk) => {
+          const imageBlocks: Groq.Chat.ChatCompletionContentPart[] = chunk.map(
+            (img) => ({ type: "image_url" as const, image_url: { url: img } })
+          );
+
+          const visionCompletion = await groq.chat.completions.create({
+            model: visionModel,
+            messages: [
               {
-                type: "text" as const,
-                text: "List every food item and ingredient visible in these images as a comma-separated list.",
+                role: "system",
+                content:
+                  "You are an ingredient detector. Look at the photos and list all food items, ingredients, condiments, and produce visible. Return a clean comma-separated list of items.",
+              },
+              {
+                role: "user",
+                content: [
+                  ...imageBlocks,
+                  {
+                    type: "text" as const,
+                    text: "List every food item and ingredient visible in these images as a comma-separated list.",
+                  },
+                ],
               },
             ],
-          },
-        ],
-        temperature: 0.2,
-        max_tokens: 500,
-      });
+            temperature: 0.2,
+            max_tokens: 500,
+          });
 
-      const rawVision = visionCompletion.choices[0]?.message?.content ?? "";
-      ingredientsList = rawVision.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+          const rawVision = visionCompletion.choices[0]?.message?.content ?? "";
+          return rawVision.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+        })
+      );
+
+      ingredientsList = chunkResults.filter(Boolean).join(", ");
     }
 
-    // STEP 2 (Chef/Brain): Generate 3 tiered recipes in strict JSON using Llama 3.3 70B (high limit, fast, perfect JSON)
+    // STEP 2 (Chef/Brain): Generate 3 tiered recipes in strict JSON
     const completion = await groq.chat.completions.create({
       model: chatModel,
       messages: [

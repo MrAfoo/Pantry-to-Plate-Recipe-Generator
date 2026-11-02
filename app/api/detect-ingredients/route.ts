@@ -2,6 +2,44 @@ import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
 
 // ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function extractIngredients(raw: string): string[] {
+  let ingredients: string[] = [];
+  try {
+    let clean = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
+    const codeBlockMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (codeBlockMatch) {
+      clean = codeBlockMatch[1].trim();
+    } else {
+      const firstBrace = clean.search(/[\{\[]/);
+      const lastBrace = Math.max(clean.lastIndexOf("}"), clean.lastIndexOf("]"));
+      if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+        clean = clean.slice(firstBrace, lastBrace + 1);
+      }
+    }
+
+    const parsed = JSON.parse(clean);
+    if (Array.isArray(parsed)) {
+      ingredients = parsed;
+    } else if (parsed && Array.isArray(parsed.ingredients)) {
+      ingredients = parsed.ingredients;
+    } else if (parsed && typeof parsed === "object") {
+      const firstArray = Object.values(parsed).find((v) => Array.isArray(v));
+      if (Array.isArray(firstArray)) {
+        ingredients = firstArray as string[];
+      }
+    }
+
+    return ingredients
+      .filter((i) => typeof i === "string" && i.trim().length > 0)
+      .map((i) => i.trim());
+  } catch {
+    return [];
+  }
+}
+
+// ---------------------------------------------------------------------------
 // POST /api/detect-ingredients
 // Send one or more images → get back a flat list of detected ingredients
 // ---------------------------------------------------------------------------
@@ -51,71 +89,53 @@ Example output:
   "ingredients": ["eggs", "butter", "cheddar cheese", "milk", "spinach", "garlic", "olive oil"]
 }`;
 
-    const imageBlocks: Groq.Chat.ChatCompletionContentPart[] = imagesBase64.map(
-      (img) => ({ type: "image_url" as const, image_url: { url: img } })
-    );
+    // Groq supports up to 3 images per request. Chunk larger lists into batches of <= 3.
+    const CHUNK_SIZE = 3;
+    const chunks: string[][] = [];
+    for (let i = 0; i < imagesBase64.length; i += CHUNK_SIZE) {
+      chunks.push(imagesBase64.slice(i, i + CHUNK_SIZE));
+    }
 
-    const completion = await groq.chat.completions.create({
-      model: visionModel,
-      messages: [
-        { role: "system", content: SYSTEM_PROMPT },
-        {
-          role: "user",
-          content: [
-            ...imageBlocks,
+    const chunkResults = await Promise.all(
+      chunks.map(async (chunk) => {
+        const imageBlocks: Groq.Chat.ChatCompletionContentPart[] = chunk.map(
+          (img) => ({ type: "image_url" as const, image_url: { url: img } })
+        );
+
+        const completion = await groq.chat.completions.create({
+          model: visionModel,
+          messages: [
+            { role: "system", content: SYSTEM_PROMPT },
             {
-              type: "text" as const,
-              text: "List every food ingredient you can see across all these images. Return JSON object with 'ingredients' array.",
+              role: "user",
+              content: [
+                ...imageBlocks,
+                {
+                  type: "text" as const,
+                  text: "List every food ingredient you can see across all these images. Return JSON object with 'ingredients' array.",
+                },
+              ],
             },
           ],
-        },
-      ],
-      temperature: 0.2,
-      max_tokens: 1200,
-    });
+          response_format: { type: "json_object" },
+          temperature: 0.2,
+          max_tokens: 1200,
+        });
 
-    const raw = completion.choices[0]?.message?.content ?? "";
+        const raw = completion.choices[0]?.message?.content ?? "";
+        return extractIngredients(raw);
+      })
+    );
 
-    // Robust extraction that handles reasoning, markdown fences, and raw json
-    let ingredients: string[] = [];
-    try {
-      let clean = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
-      const codeBlockMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
-      if (codeBlockMatch) {
-        clean = codeBlockMatch[1].trim();
-      } else {
-        const firstBrace = clean.search(/[\{\[]/);
-        const lastBrace = Math.max(clean.lastIndexOf("}"), clean.lastIndexOf("]"));
-        if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
-          clean = clean.slice(firstBrace, lastBrace + 1);
-        }
-      }
+    // Merge and deduplicate
+    const ingredients = Array.from(
+      new Set(chunkResults.flat().map((i) => i.trim()).filter(Boolean))
+    );
 
-      const parsed = JSON.parse(clean);
-      if (Array.isArray(parsed)) {
-        ingredients = parsed;
-      } else if (parsed && Array.isArray(parsed.ingredients)) {
-        ingredients = parsed.ingredients;
-      } else if (parsed && typeof parsed === "object") {
-        const firstArray = Object.values(parsed).find((v) => Array.isArray(v));
-        if (Array.isArray(firstArray)) {
-          ingredients = firstArray as string[];
-        }
-      }
-
-      // Normalise: strings only, trimmed, no empty entries
-      ingredients = ingredients
-        .filter((i) => typeof i === "string" && i.trim().length > 0)
-        .map((i) => i.trim());
-
-      if (ingredients.length === 0) {
-        throw new Error("No ingredients found");
-      }
-    } catch {
-      console.error("Ingredient parse error. Raw:", raw);
+    if (ingredients.length === 0) {
       return NextResponse.json(
-        { error: "Could not parse ingredient list. Please try again.", raw },
-        { status: 502 }
+        { error: "No ingredients detected in the uploaded photos. Please try clearer images.", ingredients: [] },
+        { status: 200 }
       );
     }
 
