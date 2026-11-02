@@ -31,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     const groq = new Groq({ apiKey });
-    const chatModel = process.env.GROQ_CHAT_MODEL || "qwen/qwen3.8-27b";
+    const chatModel = process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-20b";
 
     const SYSTEM_PROMPT = `You are a professional chef and food scientist specializing in ingredient substitutions.
 Given an ingredient and optionally a recipe context, suggest exactly 3 practical substitutes.

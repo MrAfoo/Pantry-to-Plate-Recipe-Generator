@@ -77,8 +77,10 @@ export async function POST(req: NextRequest) {
     }
 
     const groq = new Groq({ apiKey });
+    // Vision model: must support image input (qwen/qwen3.8-27b is the only one on Groq free tier)
     const visionModel = process.env.GROQ_VISION_MODEL || "qwen/qwen3.8-27b";
-    const chatModel = process.env.GROQ_CHAT_MODEL || "qwen/qwen3.8-27b";
+    // Chat model: text-only — use a different model to spread load across separate rate limit buckets
+    const chatModel = process.env.GROQ_CHAT_MODEL || "openai/gpt-oss-20b";
 
     // Optional context injected into the prompt
     const ingredientContext = confirmedIngredients?.length
