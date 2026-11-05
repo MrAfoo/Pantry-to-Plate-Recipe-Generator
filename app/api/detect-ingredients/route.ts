@@ -1,5 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import Groq from "groq-sdk";
+import type {
+  ChatCompletion,
+  ChatCompletionCreateParamsNonStreaming,
+} from "groq-sdk/resources/chat/completions";
+
+// Allow up to 60 seconds on Vercel for multi-image ingredient detection
+export const maxDuration = 60;
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -41,12 +48,12 @@ function extractIngredients(raw: string): string[] {
 
 async function createChatCompletionWithRetry(
   groq: Groq,
-  params: Parameters<typeof groq.chat.completions.create>[0],
+  params: ChatCompletionCreateParamsNonStreaming,
   retries = 2
-) {
+): Promise<ChatCompletion> {
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
-      return await groq.chat.completions.create(params);
+      return (await groq.chat.completions.create(params)) as Groq.Chat.ChatCompletion;
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : String(err);
       const isRateLimit = errMsg.includes("429") || errMsg.toLowerCase().includes("rate limit");
